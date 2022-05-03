@@ -6,7 +6,9 @@ license       = "MIT OR Apache-2.0"
 edition       = "2021"
 repository    = "https://github.com/kiibohd/kiibohd-core"
 description   = "Analysis crate for intepreting hall-effect keyboard switches (e.g. Silo Switches)"
-categories    = ["no-std", "embedded", "hardware-support"]
+keywords      = ["no-std", "usb", "hid", "embedded", "keyboard"]
+categories    = ["embedded", "no-std", "hardware-support"]
+
 
 [lib]
 name = "kiibohd_hall_effect"

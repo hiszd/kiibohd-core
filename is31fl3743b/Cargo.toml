@@ -6,7 +6,8 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 description = "Bare-metal no_std driver for the Lumissil IS31FL3743B"
 repository = "https://github.com/kiibohd/kiibohd-core"
-categories = ["no-std", "embedded", "hardware-support"]
+keywords = ["no-std", "embedded", "hardware-support"]
+categories = ["embedded", "no-std"]
 
 [features]
 default = [

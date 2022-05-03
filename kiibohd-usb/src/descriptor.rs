@@ -50,7 +50,7 @@ use usbd_hid::descriptor::generator_prelude::*;
         };
     }
 )]
-#[allow(dead_code)]
+
 pub struct KeyboardNkroReport {
     pub leds: u8,
     pub keybitmap: [u8; 29],
@@ -87,14 +87,14 @@ pub struct KeyboardNkroReport {
         };
     }
 )]
-#[allow(dead_code)]
+
 pub struct SysCtrlConsumerCtrlReport {
     pub consumer_ctrl: u16,
     pub system_ctrl: u8,
 }
 
 /// Mouse Interface
-/// MouseReport describes a report and its companion descriptor than can be used
+/// MouseReport describes a report and its companion descriptor that can be used
 /// to send mouse movements and button presses to a host.
 #[gen_hid_descriptor(
     (collection = APPLICATION, usage_page = GENERIC_DESKTOP, usage = MOUSE) = {
@@ -119,7 +119,7 @@ pub struct SysCtrlConsumerCtrlReport {
         };
     }
 )]
-#[allow(dead_code)]
+
 pub struct MouseReport {
     pub buttons: u8,
     pub x: i16,

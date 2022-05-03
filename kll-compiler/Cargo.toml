@@ -6,6 +6,8 @@ license = "MIT OR Apache-2.0"
 edition = "2021"
 description = "KLL (Keyboard Layout Language) Compiler - Rust Edition"
 repository = "https://github.com/kiibohd/kiibohd-core"
+keywords = ["no-std", "usb", "hid", "embedded", "keyboard"]
+categories = ["embedded", "no-std"]
 
 [dependencies]
 alphanumeric-sort   = "1.4"

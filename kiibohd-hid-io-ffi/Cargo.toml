@@ -9,6 +9,8 @@ description   = """
 FFI HID-IO protocol implementation for the C kiibohd firmware.
 Device Cortex-M implementation
 """
+keywords = ["no-std", "usb", "hid", "embedded", "keyboard"]
+categories = ["embedded", "no-std"]
 
 edition = "2021"
 

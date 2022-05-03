@@ -327,17 +327,17 @@ enum LayerLookupState {
 /// const LAYER_LOOKUP: &'static [u8] = kll_macros::layer_lookup!(
 ///     // Layer 0, Switch Type (1), Index 5, No Triggers
 ///     0, 1, 5, [],
-///     // Layer 0, Switch Type (1), Index 6, 2 triggers: 0 14
+///     // Layer 0, Switch Type (1), Index 6, 2 Triggers: 0 14
 ///     0, 1, 6, [0, 14],
-///     // Layer 0, Switch Type (1), Index 7, 1 trigger: 0
+///     // Layer 0, Switch Type (1), Index 7, 1 Trigger: 0
 ///     0, 1, 7, [0],
 ///     // Layer 1, None Type (0), Index 2, No Triggers
 ///     1, 0, 2, [],
-///     // Layer 1, Layer Type (7), Layer(index) 3, 1 trigger: A
+///     // Layer 1, Layer Type (7), Layer(index) 3, 1 Trigger: A
 ///     1, 7, 3, [0xA],
-///     // Layer 2, AnalogDistance Type (3), Index 8, 1 trigger: A
+///     // Layer 2, AnalogDistance Type (3), Index 8, 1 Trigger: A
 ///     2, 3, 8, [0xA],
-///     // Layer 2, Switch Type (1), Index 6, 1 trigger: 14
+///     // Layer 2, Switch Type (1), Index 6, 1 Trigger: 14
 ///     2, 1, 6, [14],
 /// );
 /// ```

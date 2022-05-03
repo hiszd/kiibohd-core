@@ -6,7 +6,8 @@ description = "Kiibohd gpio keyscanning module for momentary push button switche
 license = "MIT OR Apache-2.0"
 edition = "2021"
 repository = "https://github.com/kiibohd/kiibohd-core"
-categories = ["embedded", "hardware-support", "no-std"]
+keywords = ["no-std", "usb", "hid", "embedded", "keyboard"]
+categories = ["embedded", "no-std", "hardware-support"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
