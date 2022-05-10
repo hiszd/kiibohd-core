@@ -475,7 +475,7 @@ impl<
     /// To maintain state use a callback function to evaluate input off states
     pub fn process_off_state_lookups<const MAX_LAYER_LOOKUP_SIZE: usize>(
         &mut self,
-        generate_event: &dyn Fn(usize) -> TriggerEvent,
+        generate_event: &dyn Fn(usize) -> Vec<TriggerEvent, 4>,
     ) {
         let mut events: heapless::Vec<TriggerEvent, MAX_LAYER_LOOKUP_SIZE> = heapless::Vec::new();
         for lookup in &self.off_state_lookups {
@@ -484,7 +484,9 @@ impl<
                 lookup.1 == 1,
                 "Currently only keyboard TriggerConditions are supported"
             );
-            events.push(generate_event(lookup.2.into())).unwrap();
+            for gen_event in generate_event(lookup.2.into()) {
+                events.push(gen_event).unwrap();
+            }
         }
 
         for event in events {

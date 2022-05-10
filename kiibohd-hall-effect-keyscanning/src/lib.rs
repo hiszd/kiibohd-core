@@ -8,7 +8,7 @@
 #![no_std]
 
 use embedded_hal::digital::v2::OutputPin;
-use kiibohd_hall_effect::{SenseAnalysis, SensorError, Sensors};
+use kiibohd_hall_effect::{SenseAnalysis, SenseData, SensorError, Sensors};
 
 /// Handles strobing the Hall Effect sensor matrix
 /// ADC reading is handled separately as the current embedded-hal doesn't work
@@ -124,5 +124,39 @@ impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: 
         value: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
         self.sensors.add::<SC>(index, value)
+    }
+
+    /// Return current SenseAnalysis for a given index
+    pub fn state(&self, index: usize) -> Option<Result<&SenseData, SensorError>> {
+        if index >= self.sensors.len() {
+            None
+        } else {
+            Some(self.sensors.get_data(index))
+        }
+    }
+}
+
+#[cfg(feature = "kll-core")]
+mod converters {
+    use crate::{Matrix, OutputPin};
+    use heapless::Vec;
+    use kll_core::TriggerEvent;
+
+    impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: bool>
+        Matrix<C, CSIZE, MSIZE, INVERT_STROBE>
+    {
+        /// Generate event from SenseData
+        /// Useful when trying to determine if a key has not been pressed
+        pub fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
+            if let Some(state) = self.state(index) {
+                if let Ok(data) = state {
+                    data.trigger_event(index, true)
+                } else {
+                    Vec::new()
+                }
+            } else {
+                Vec::new()
+            }
+        }
     }
 }

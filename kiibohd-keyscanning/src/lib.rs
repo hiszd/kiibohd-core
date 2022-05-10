@@ -1,5 +1,5 @@
 // Copyright 2021 Zion Koyl
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -234,16 +234,23 @@ impl<
     }
 
     /// Return the KeyState for a given index
-    pub fn state(&self, index: usize) -> KeyState<CSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS> {
-        self.state_matrix[index]
+    pub fn state(
+        &self,
+        index: usize,
+    ) -> Option<KeyState<CSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS>> {
+        if index >= self.state_matrix.len() {
+            None
+        } else {
+            Some(self.state_matrix[index])
+        }
     }
 
     /// Generate event from KeyState
     /// Useful when trying to determine if a key has not been pressed
-    pub fn generate_event(&self, index: usize) -> KeyEvent {
-        let state = self.state_matrix[index];
+    pub fn generate_event(&self, index: usize) -> Option<KeyEvent> {
+        let state = self.state(index);
 
-        match state.state().0 {
+        state.map(|state| match state.state().0 {
             State::On => KeyEvent::On {
                 cycles_since_state_change: state.cycles_since_state_change(),
             },
@@ -251,17 +258,19 @@ impl<
                 idle: state.idle(),
                 cycles_since_state_change: state.cycles_since_state_change(),
             },
-        }
+        })
     }
 }
 
 #[cfg(feature = "kll-core")]
 mod converters {
     use crate::KeyEvent;
+    use heapless::Vec;
+    use kll_core::TriggerEvent;
 
     impl KeyEvent {
-        pub fn trigger_event(&self, index: usize) -> kll_core::TriggerEvent {
-            match self {
+        pub fn trigger_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
+            Vec::from_slice(&[match self {
                 KeyEvent::On {
                     cycles_since_state_change,
                 } => {
@@ -299,7 +308,8 @@ mod converters {
                         }
                     }
                 }
-            }
+            }])
+            .unwrap()
         }
     }
 }

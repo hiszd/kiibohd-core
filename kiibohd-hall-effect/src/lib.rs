@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -441,6 +441,75 @@ impl<const S: usize> Sensors<S> {
             }
         } else {
             Err(SensorError::InvalidSensor(index))
+        }
+    }
+
+    /// Max number of sensors
+    pub fn len(&self) -> usize {
+        S
+    }
+
+    pub fn is_empty(&self) -> bool {
+        S == 0
+    }
+}
+
+#[cfg(feature = "kll-core")]
+mod converters {
+    use crate::{CalibrationStatus, SenseAnalysis, SenseData};
+    use heapless::Vec;
+    use kll_core::TriggerEvent;
+
+    impl SenseAnalysis {
+        /// Convert SenseData to a TriggerEvent
+        /// Criteria used to generate the event (an event may not be ready yet)
+        /// - Distance movement must be non-zero (velocity)
+        /// - Enough samples must be generated for each kind of event
+        ///   This only matters when initializing the datastructures, steady-state always has
+        ///   enough samples
+        ///   * 1 sample for distance
+        ///   * 2 samples for velocity
+        ///   * 3 samples for acceleration
+        ///   * 4 samples for jerk
+        pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {
+            let index: u16 = index as u16;
+            // Make sure there has been distance movement
+            if self.velocity != 0 || ignore_off {
+                Vec::from_slice(&[
+                    TriggerEvent::AnalogDistance {
+                        index,
+                        val: self.distance,
+                    },
+                    TriggerEvent::AnalogVelocity {
+                        index,
+                        val: self.velocity,
+                    },
+                    TriggerEvent::AnalogAcceleration {
+                        index,
+                        val: self.acceleration,
+                    },
+                    TriggerEvent::AnalogJerk {
+                        index,
+                        val: self.jerk,
+                    },
+                ])
+                .unwrap()
+            } else {
+                Vec::new()
+            }
+        }
+    }
+
+    impl SenseData {
+        /// Conveniece conversion, uses earlier analysis
+        /// Also validates calibration status
+        pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {
+            // Validate calibration
+            if self.cal != CalibrationStatus::MagnetDetected {
+                Vec::new()
+            } else {
+                self.analysis.trigger_event(index, ignore_off)
+            }
         }
     }
 }

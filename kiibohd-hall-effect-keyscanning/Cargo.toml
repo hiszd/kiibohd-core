@@ -11,7 +11,11 @@ categories = ["embedded", "no-std"]
 
 [dependencies]
 kiibohd-hall-effect = { version = "0.1.0", path = "../kiibohd-hall-effect" }
-generic-array   = "0.14.4"
-embedded-hal    = "0.2.7"
-embedded-time   = "0.10.1"
-heapless        = "^0.7.10"
+kll-core            = { version = "0.1.0", path = "../kll-core", optional = true }
+generic-array       = "0.14.4"
+embedded-hal        = "0.2.7"
+embedded-time       = "0.10.1"
+heapless            = "^0.7.10"
+
+[features]
+kll-core = ["kiibohd-hall-effect/kll-core", "dep:kll-core"]
