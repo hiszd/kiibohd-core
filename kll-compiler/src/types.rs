@@ -291,7 +291,7 @@ impl Position {
     }
 }
 
-impl<'a> fmt::Display for Position {
+impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.x != 0. {
             write!(f, "x:{}", self.x)?;
@@ -395,7 +395,7 @@ impl FromStr for LayerMode {
     }
 }
 
-impl<'a> fmt::Display for LayerMode {
+impl fmt::Display for LayerMode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Normal => write!(f, "Layer"),
@@ -563,7 +563,7 @@ pub struct State {
     pub time: Option<usize>,
 }
 
-impl<'a> fmt::Display for State {
+impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(time) = self.time {
             write!(f, "{}:{}", self.kind, time)
@@ -600,7 +600,7 @@ impl StateMap {
     }
 }
 
-impl<'a> fmt::Display for StateMap {
+impl fmt::Display for StateMap {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -683,7 +683,7 @@ impl FromStr for StateType {
     }
 }
 
-impl<'a> fmt::Display for StateType {
+impl fmt::Display for StateType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             // Key
