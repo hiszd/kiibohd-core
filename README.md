@@ -11,6 +11,8 @@ It is even possible to integrate pieces into other languages using the -ffi crat
 
 **NOTE**: Crates in this repo generally use nightly due to requirements of hid-io-protocol
 
+**NOTE**: kll-compiler crate is special and is excluded from the main cargo due to no_std conflicts.
+
 
 ## Testing
 
