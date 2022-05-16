@@ -1,7 +1,7 @@
 # hid-io-kiibohd
 
 [![Rust](https://github.com/kiibohd/kiibohd-core/actions/workflows/rust.yml/badge.svg)](https://github.com/kiibohd/kiibohd-core/actions/workflows/rust.yml)
-[![docs.rs](https://docs.rs/kiibohd-hid-io/badge.svg)](https://docs.rs/kiibohd-hall-effect-keyscanning)
+[![docs.rs](https://docs.rs/kiibohd-hid-io/badge.svg)](https://docs.rs/kiibohd-hid-io)
 [![Crates.io](https://img.shields.io/crates/v/kiibohd-hid-io.svg)](https://crates.io/crates/kiibohd-hid-io)
 [![Crates.io](https://img.shields.io/crates/l/kiibohd-hid-io.svg)](https://crates.io/crates/kiibohd-hid-io)
 [![Crates.io](https://img.shields.io/crates/d/kiibohd-hid-io.svg)](https://crates.io/crates/kiibohd-hid-io)
