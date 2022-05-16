@@ -1,4 +1,4 @@
-# hid-io-kiibohd
+# kiibohd-hid-io
 
 [![Rust](https://github.com/kiibohd/kiibohd-core/actions/workflows/rust.yml/badge.svg)](https://github.com/kiibohd/kiibohd-core/actions/workflows/rust.yml)
 [![docs.rs](https://docs.rs/kiibohd-hid-io/badge.svg)](https://docs.rs/kiibohd-hid-io)
