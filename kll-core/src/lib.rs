@@ -841,24 +841,22 @@ impl Capability {
     /// # Safety
     pub const unsafe fn bytes(&self) -> &[u8] {
         &*core::ptr::slice_from_raw_parts(
-            (self as *const Capability) as *const u8,
-            core::mem::size_of::<Capability>(),
+            (self as *const Self) as *const u8,
+            core::mem::size_of::<Self>(),
         )
     }
 
     /// Convert array of bytes to enum
     /// # Safety
-    pub const unsafe fn from_byte_array(
-        bytes: [u8; core::mem::size_of::<Capability>()],
-    ) -> Capability {
+    pub const unsafe fn from_byte_array(bytes: [u8; core::mem::size_of::<Self>()]) -> Self {
         core::mem::transmute(bytes)
     }
 
     /// Convert slice of bytes to enum
     /// Aggressively casts the provide u8 slice to retrieve a Capability
     /// # Safety
-    pub const unsafe fn from_bytes(bytes: &[u8]) -> Capability {
-        core::ptr::read(bytes.as_ptr() as *const &[u8] as *const Capability)
+    pub const unsafe fn from_bytes(bytes: &[u8]) -> Self {
+        core::ptr::read(bytes.as_ptr() as *const &[u8] as *const Self)
     }
 }
 
@@ -1140,6 +1138,28 @@ pub enum TriggerEvent {
 }
 
 impl TriggerEvent {
+    /// Convert enum to an array of bytes
+    /// # Safety
+    pub const unsafe fn bytes(&self) -> &[u8] {
+        &*core::ptr::slice_from_raw_parts(
+            (self as *const Self) as *const u8,
+            core::mem::size_of::<Self>(),
+        )
+    }
+
+    /// Convert array of bytes to enum
+    /// # Safety
+    pub const unsafe fn from_byte_array(bytes: [u8; core::mem::size_of::<Self>()]) -> Self {
+        core::mem::transmute(bytes)
+    }
+
+    /// Convert slice of bytes to enum
+    /// Aggressively casts the provide u8 slice to retrieve a TriggerEvent
+    /// # Safety
+    pub const unsafe fn from_bytes(bytes: &[u8]) -> Self {
+        core::ptr::read(bytes.as_ptr() as *const &[u8] as *const Self)
+    }
+
     /// Attempts to determine the index value of the event
     /// If an index is not valid, return 0 instead (index may not have any meaning)
     pub fn index(&self) -> u16 {
@@ -1164,6 +1184,8 @@ impl TriggerEvent {
 
 // Size validation for TriggerEvent
 // Less important than TriggerCondition size, but to serve as a check when updating the enum fields
+// NOTE: TriggerEvents are passed directly to HID-IO, changing the structure and orders will break
+// apis, so be carefut with modifications.
 const_assert_eq!(core::mem::size_of::<TriggerEvent>(), 8);
 
 /// Trigger condition definitions
@@ -1310,24 +1332,22 @@ impl TriggerCondition {
     /// # Safety
     pub const unsafe fn bytes(&self) -> &[u8] {
         &*core::ptr::slice_from_raw_parts(
-            (self as *const TriggerCondition) as *const u8,
-            core::mem::size_of::<TriggerCondition>(),
+            (self as *const Self) as *const u8,
+            core::mem::size_of::<Self>(),
         )
     }
 
     /// Convert array of bytes to enum
     /// # Safety
-    pub const unsafe fn from_byte_array(
-        bytes: [u8; core::mem::size_of::<TriggerCondition>()],
-    ) -> TriggerCondition {
+    pub const unsafe fn from_byte_array(bytes: [u8; core::mem::size_of::<Self>()]) -> Self {
         core::mem::transmute(bytes)
     }
 
     /// Convert slice of bytes to enum
     /// Aggressively casts the provide u8 slice to retrieve a TriggerCondition
     /// # Safety
-    pub const unsafe fn from_bytes(bytes: &[u8]) -> TriggerCondition {
-        core::ptr::read(bytes.as_ptr() as *const &[u8] as *const TriggerCondition)
+    pub const unsafe fn from_bytes(bytes: &[u8]) -> Self {
+        core::ptr::read(bytes.as_ptr() as *const &[u8] as *const Self)
     }
 
     /// Attempts to determine the index value of the condition
