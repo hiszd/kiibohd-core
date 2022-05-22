@@ -34,7 +34,7 @@ kll-core = ["dep:kll-core"]
 [dependencies]
 defmt    = { version = "0.3" }
 heapless = { version = "^0.7.10" }
-kll-core = { version = "0.1.0", path = "../kll-core", optional = true }
+kll-core = { version = "0.1", path = "../kll-core", optional = true }
 log      = { version = "^0.4", default-features = false, optional = true }
 typenum  = { version = "^1.12", features = ["no_std"] }
 

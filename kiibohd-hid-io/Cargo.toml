@@ -14,6 +14,6 @@ edition = "2021"
 
 [dependencies]
 heapless        = { version = "^0.7.10" }
-hid-io-protocol = { version = "0.1.0", git = "https://github.com/hid-io/hid-io-core", default-features = false, features = ["device", "defmt-impl"] }
-kll-core        = { version = "0.1.0", path = "../kll-core" }
+hid-io-protocol = { version = "0.1", git = "https://github.com/hid-io/hid-io-core", default-features = false, features = ["device", "defmt-impl"] }
+kll-core        = { version = "0.1", path = "../kll-core" }
 pkg-version     = { version = "^1.0" }

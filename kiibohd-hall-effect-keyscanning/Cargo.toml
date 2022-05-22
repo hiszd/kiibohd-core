@@ -10,8 +10,8 @@ keywords = ["no-std", "embedded", "keyboard", "hardware-support"]
 categories = ["embedded", "no-std"]
 
 [dependencies]
-kiibohd-hall-effect = { version = "0.1.0", path = "../kiibohd-hall-effect" }
-kll-core            = { version = "0.1.0", path = "../kll-core", optional = true }
+kiibohd-hall-effect = { version = "0.1", path = "../kiibohd-hall-effect" }
+kll-core            = { version = "0.1", path = "../kll-core", optional = true }
 generic-array       = "0.14.4"
 embedded-hal        = "0.2.7"
 embedded-time       = "0.10.1"
