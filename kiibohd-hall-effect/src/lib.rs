@@ -42,7 +42,7 @@ use rawlookup::MODEL;
 /// Calibration status indicates if a sensor position is ready to send
 /// analysis for a particular key.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, defmt::Format)]
+#[derive(Clone, Debug, PartialEq, Eq, defmt::Format)]
 pub enum CalibrationStatus {
     NotReady = 0,                 // Still trying to determine status (from power-on)
     SensorMissing = 1,            // ADC value at 0

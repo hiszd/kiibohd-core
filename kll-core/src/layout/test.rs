@@ -42,19 +42,19 @@ fn setup_logging_lite() -> Result<(), LogError> {
 ///
 /// Form
 /// ```
-/// const COND_A: &'static TriggerCondition = &TriggerCondition::Switch {
+/// const COND_A: &TriggerCondition = &TriggerCondition::Switch {
 ///     state: trigger::Phro::Press,
 ///     index: 1200,
 ///     loop_condition_index: 4,
 /// };
 ///
-/// const COND_B: &'static TriggerCondition = &TriggerCondition::Switch {
+/// const COND_B: &TriggerCondition = &TriggerCondition::Switch {
 ///     state: trigger::Phro::Press,
 ///     index: 2400,
 ///     loop_condition_index: 0,
 /// };
 ///
-/// const TRIGGER_GUIDES: &'static [u8] = trigger_guide_alt!(
+/// const TRIGGER_GUIDES: &[u8] = trigger_guide_alt!(
 ///     // 2 key combo then 1 key combo sequence
 ///     [[2, COND_A, COND_B], [1, COND_A]],
 ///     // Just a single key combo
@@ -126,18 +126,18 @@ fn trigger_guide_macro() {
     setup_logging_lite().ok();
 
     // Setup const TriggerConditions to use for the trigger guide
-    const COND_A: &'static TriggerCondition = &TriggerCondition::Switch {
+    const COND_A: &TriggerCondition = &TriggerCondition::Switch {
         state: trigger::Phro::Press,
         index: 1200,
         loop_condition_index: 4,
     };
-    const COND_B: &'static TriggerCondition = &TriggerCondition::Switch {
+    const COND_B: &TriggerCondition = &TriggerCondition::Switch {
         state: trigger::Phro::Press,
         index: 2400,
         loop_condition_index: 0,
     };
 
-    const TRIGGER_GUIDES: &'static [u8] = trigger_guide_alt!(
+    const TRIGGER_GUIDES: &[u8] = trigger_guide_alt!(
         // 2 key combo then 1 key combo sequence
         [[2, COND_A, COND_B], [1, COND_A]],
         // Just a single key combo
@@ -145,7 +145,7 @@ fn trigger_guide_macro() {
     );
 
     #[rustfmt::skip]
-    const TRIGGER_GUIDE_COMPARE: &'static [u8] = &[
+    const TRIGGER_GUIDE_COMPARE: &[u8] = &[
         // COND_A + COND_B
         2, 1, 1, 176, 4, 4, 0, 1, 1, 96, 9, 0, 0,
         // COND_A
@@ -165,7 +165,7 @@ fn trigger_guide_macro() {
     );
 
     // Simple inline guide
-    const TRIGGER_GUIDES2: &'static [u8] = kll_macros::trigger_guide!([
+    const TRIGGER_GUIDES2: &[u8] = kll_macros::trigger_guide!([
         [
             TriggerCondition::Switch {
                 state: trigger::Phro::Press,
@@ -186,7 +186,7 @@ fn trigger_guide_macro() {
     ]);
 
     #[rustfmt::skip]
-    const TRIGGER_GUIDE_COMPARE2: &'static [u8] = &[
+    const TRIGGER_GUIDE_COMPARE2: &[u8] = &[
         // 15Press + 16Press
         2, 1, 1, 15, 0, 0, 0, 1, 1, 16, 0, 1, 0,
         // 15Release
@@ -206,7 +206,7 @@ fn trigger_guide_macro() {
 fn result_guide_macro() {
     setup_logging_lite().ok();
 
-    const RESULT_GUIDES: &'static [u8] = kll_macros::result_guide!(
+    const RESULT_GUIDES: &[u8] = kll_macros::result_guide!(
         // Press A + Shift
         [[
             Capability::HidKeyboard {
@@ -229,7 +229,7 @@ fn result_guide_macro() {
     );
 
     #[rustfmt::skip]
-    const RESULT_GUIDE_COMPARE: &'static [u8] = &[
+    const RESULT_GUIDE_COMPARE: &[u8] = &[
         // A + Shift
         2, 6, 1, 0, 0, 4, 0, 0, 0, 6, 1, 0, 0, 225, 0, 0, 0,
         // B
@@ -254,7 +254,7 @@ fn basic_init_test() {
     //   Trigger => TRIGGER_GUIDES
     //   Result => RESULT_GUIDES
     #[rustfmt::skip]
-    const LAYER_LOOKUP: &'static [u8] = kll_macros::layer_lookup!(
+    const LAYER_LOOKUP: &[u8] = kll_macros::layer_lookup!(
         // Layer 0, Switch Type (1), Index 5, No Triggers
         0, 1, 5, [],
         // Layer 0, Switch Type (1), Index 6, 2 triggers indices: 0 2
@@ -272,7 +272,7 @@ fn basic_init_test() {
     );
 
     // TriggerResult Mapping
-    const TRIGGER_RESULT_MAPPING: &'static [u16] = &[
+    const TRIGGER_RESULT_MAPPING: &[u16] = &[
         // index: TriggerGuideIndex => ResultGuideIndex
         0, 0, // 0: 0 => 0
         13, 35, // 2: 13 => 35
@@ -284,7 +284,7 @@ fn basic_init_test() {
     // TriggerGuide layout
     // <combo size>, <TriggerCondition>.., <combo size>, ...
     // If a combo size is 0, then the sequence has ended (handled by macro)
-    const TRIGGER_GUIDES: &'static [u8] = kll_macros::trigger_guide!(
+    const TRIGGER_GUIDES: &[u8] = kll_macros::trigger_guide!(
         // Index: 0
         [[
             TriggerCondition::Switch {
@@ -320,7 +320,7 @@ fn basic_init_test() {
     trace!("TRIGGER_GUIDES: {:?}", TRIGGER_GUIDES);
 
     // ResultGuide layout
-    const RESULT_GUIDES: &'static [u8] = kll_macros::result_guide!(
+    const RESULT_GUIDES: &[u8] = kll_macros::result_guide!(
         // Press Shift + A; Release Shift; Release A
         // Index: 0
         [
@@ -366,7 +366,7 @@ fn basic_init_test() {
 
     // Loop Condition Lookup
     // NOTE: This lookup must always have at least 1 entry.
-    const LOOP_CONDITION_LOOKUP: &'static [u32] = &[0];
+    const LOOP_CONDITION_LOOKUP: &[u32] = &[0];
 
     // Build lookup
     let lookup = LayerLookup::<256>::new(
@@ -403,7 +403,7 @@ fn basic_init_test() {
                 );
             }
             None => {
-                assert!(false, "Missing key: {:?}", key);
+                panic!("Missing key: {:?}", key);
             }
         }
     }

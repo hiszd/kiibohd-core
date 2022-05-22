@@ -15,7 +15,7 @@ use heapless::{FnvIndexMap, Vec};
 
 // ----- Enums -----
 
-#[derive(Copy, Clone, Debug, PartialEq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
 enum LayerProcessMode {
     Layer,
     TriggerType,
@@ -25,7 +25,7 @@ enum LayerProcessMode {
     Triggers(u8),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
 enum StateStatus {
     /// TriggerCondition + u8 offset position
     TriggerPos {
@@ -52,7 +52,7 @@ enum StateStatus {
     Done,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
 pub enum ProcessError {
     /// MAX_OFF_STATE_LOOKUP is too small
     FailedOffStatePush,
@@ -64,7 +64,7 @@ pub enum ProcessError {
 
 // ----- Structs -----
 
-#[derive(Copy, Clone, Debug, PartialEq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
 struct Layer {
     state: layer::State,
     /// Last operation that touched this layer state
@@ -606,7 +606,7 @@ impl<
 /// In most cases a (layer, ttype, index) tuple is provided and a list of TriggerGuide:ResultGuide
 /// mappings
 /// is provided. See lookup_guides().
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LayerLookup<'a, const LAYOUT_SIZE: usize> {
     layer_lookup: FnvIndexMap<(u8, u8, u16), usize, LAYOUT_SIZE>,
     raw_layer_lookup: &'a [u8],

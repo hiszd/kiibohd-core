@@ -104,12 +104,12 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all -- -D warnings
+          args: --all-targets -- -D warnings
       # Temporary action until bincode-core is converted to bincode
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --manifest-path kll-compiler/Cargo.toml -- -D warnings
+          args: --all-targets --manifest-path kll-compiler/Cargo.toml -- -D warnings
 
   doc:
     name: Doc Check

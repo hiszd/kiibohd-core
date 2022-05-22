@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -77,16 +77,12 @@ fn not_ready() {
 
     // Retrieve before sending any data
     let state = sensors.get_data(0);
-    match state.clone() {
-        Err(SensorError::CalibrationError(data)) => match data.cal {
-            CalibrationStatus::NotReady => {
-                return;
-            }
-            _ => {}
-        },
-        _ => {}
+    if let Err(SensorError::CalibrationError(data)) = state.clone() {
+        if data.cal == CalibrationStatus::NotReady {
+            return;
+        }
     }
-    assert!(false, "Unexpected state: {:?}", state);
+    panic!("Unexpected state: {:?}", state);
 }
 
 #[test]
@@ -110,16 +106,12 @@ fn sensor_missing() {
         NO_SENSOR_THRESHOLD as u16 - 1,
     );
 
-    match state.clone() {
-        Err(SensorError::CalibrationError(data)) => match data.cal {
-            CalibrationStatus::SensorMissing => {
-                return;
-            }
-            _ => {}
-        },
-        _ => {}
+    if let Err(SensorError::CalibrationError(data)) = state.clone() {
+        if data.cal == CalibrationStatus::SensorMissing {
+            return;
+        }
     }
-    assert!(false, "Unexpected state: {:?}", state);
+    panic!("Unexpected state: {:?}", state);
 }
 
 #[test]
@@ -138,16 +130,12 @@ fn sensor_broken() {
     let state =
         sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, 0xFFFF);
 
-    match state.clone() {
-        Err(SensorError::CalibrationError(data)) => match data.cal {
-            CalibrationStatus::SensorBroken => {
-                return;
-            }
-            _ => {}
-        },
-        _ => {}
+    if let Err(SensorError::CalibrationError(data)) = state.clone() {
+        if data.cal == CalibrationStatus::SensorBroken {
+            return;
+        }
     }
-    assert!(false, "Unexpected state: {:?}", state);
+    panic!("Unexpected state: {:?}", state);
 }
 
 #[test]
@@ -171,16 +159,12 @@ fn magnet_missing() {
         MIN_OK_THRESHOLD as u16 - 1,
     );
 
-    match state.clone() {
-        Err(SensorError::CalibrationError(data)) => match data.cal {
-            CalibrationStatus::MagnetWrongPoleOrMissing => {
-                return;
-            }
-            _ => {}
-        },
-        _ => {}
+    if let Err(SensorError::CalibrationError(data)) = state.clone() {
+        if data.cal == CalibrationStatus::MagnetWrongPoleOrMissing {
+            return;
+        }
     }
-    assert!(false, "Unexpected state: {:?}", state);
+    panic!("Unexpected state: {:?}", state);
 }
 
 fn magnet_check_calibration<const U: usize>(sensors: &mut Sensors<U>) {
@@ -195,28 +179,20 @@ fn magnet_check_calibration<const U: usize>(sensors: &mut Sensors<U>) {
         sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val);
 
     let mut test = false;
-    match state.clone() {
-        Ok(rval) => {
-            if let Some(rval) = rval {
-                if rval.raw == val {
-                    test = true;
-                }
-            }
+    if let Ok(Some(rval)) = state.clone() {
+        if rval.raw == val {
+            test = true;
         }
-        _ => {}
     }
     assert!(test, "Unexpected state: {:?}", state);
 
     // Check calibration
     let mut test = false;
     let state = sensors.get_data(0);
-    match state {
-        Ok(val) => {
-            if val.cal == CalibrationStatus::MagnetDetected {
-                test = true;
-            }
+    if let Ok(val) = state {
+        if val.cal == CalibrationStatus::MagnetDetected {
+            test = true;
         }
-        _ => {}
     }
     assert!(test, "Unexpected state: {:?}", state);
 }
@@ -233,28 +209,20 @@ fn magnet_check_normal<const U: usize>(sensors: &mut Sensors<U>) {
         sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val);
 
     let mut test = false;
-    match state.clone() {
-        Ok(rval) => {
-            if let Some(rval) = rval {
-                if rval.raw == val {
-                    test = true;
-                }
-            }
+    if let Ok(Some(rval)) = state.clone() {
+        if rval.raw == val {
+            test = true;
         }
-        _ => {}
     }
     assert!(test, "Unexpected state: {:?}", state);
 
     // Check calibration
     let mut test = false;
     let state = sensors.get_data(0);
-    match state {
-        Ok(val) => {
-            if val.cal == CalibrationStatus::MagnetDetected {
-                test = true;
-            }
+    if let Ok(val) = state {
+        if val.cal == CalibrationStatus::MagnetDetected {
+            test = true;
         }
-        _ => {}
     }
     assert!(test, "Unexpected state: {:?}", state);
 }
@@ -300,15 +268,10 @@ fn sensor_min_adjust() {
     let state =
         sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val);
     let mut test = false;
-    match state.clone() {
-        Ok(rval) => {
-            if let Some(rval) = rval {
-                if rval.raw == val {
-                    test = true;
-                }
-            }
+    if let Ok(Some(rval)) = state.clone() {
+        if rval.raw == val {
+            test = true;
         }
-        _ => {}
     }
     assert!(test, "Unexpected state: {:?}", state);
 

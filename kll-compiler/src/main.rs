@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use structopt::StructOpt;
 
-#[derive(Debug, PartialEq, enum_utils::FromStr)]
+#[derive(Debug, PartialEq, Eq, enum_utils::FromStr)]
 #[enumeration(rename_all = "lowercase")]
 pub enum EmitterType {
     /// Re-generate kll files

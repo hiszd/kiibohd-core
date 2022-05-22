@@ -93,7 +93,7 @@ fn trigger_result() {
                 trigger_guides.append(&mut trigger_guide);
                 *pos
             }
-            Err(err) => err.entry.get().clone(),
+            Err(err) => *err.entry.get(),
         };
 
         let mut result_guide = result_list.kll_core_guide(layouts.clone());
@@ -103,7 +103,7 @@ fn trigger_result() {
                 result_guides.append(&mut result_guide);
                 *pos
             }
-            Err(err) => err.entry.get().clone(),
+            Err(err) => *err.entry.get(),
         };
 
         // Add trigger:result mapping
@@ -141,7 +141,7 @@ fn layer_lookup_simple() {
         &kdata.trigger_guides,
         &kdata.result_guides,
         &kdata.trigger_result_map,
-        &loop_condition_lookup,
+        loop_condition_lookup,
     );
 
     // Initialize LayerState

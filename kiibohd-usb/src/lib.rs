@@ -49,7 +49,7 @@ use heapless::Vec;
 #[cfg(feature = "hidio")]
 use kiibohd_hid_io::{CommandInterface, KiibohdCommandInterface};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt-impl", derive(defmt::Format))]
 pub enum KeyState {
     /// Press the given USB HID Keyboard code
@@ -62,7 +62,7 @@ pub enum KeyState {
     Unknown,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt-impl", derive(defmt::Format))]
 pub enum MouseState {
     /// Press the given mouse button (1->8)
@@ -81,7 +81,7 @@ pub enum MouseState {
     Unknown,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt-impl", derive(defmt::Format))]
 pub enum CtrlState {
     /// Press the given USB HID System Ctrl code

@@ -1,5 +1,5 @@
 // Copyright 2021 Zion Koyl
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -8,7 +8,7 @@
 
 use core::ops::Not;
 
-#[derive(PartialEq, Copy, Clone, Debug, defmt::Format)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, defmt::Format)]
 pub enum State {
     On,
     Off,

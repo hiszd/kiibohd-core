@@ -216,11 +216,8 @@ mod processing {
     fn scancode_implied_state() {
         let result = dbg!(KllFile::from_str("S100 : U\"A\";\n"));
         assert!(result.is_ok());
-        match &result.unwrap().statements[0] {
-            Statement::Keymap(mapping) => {
-                dbg!(mapping.implied_state());
-            }
-            _ => {}
+        if let Statement::Keymap(mapping) = &result.unwrap().statements[0] {
+            dbg!(mapping.implied_state());
         }
     }
 }

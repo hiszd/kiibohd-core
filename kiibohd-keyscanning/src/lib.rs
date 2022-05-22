@@ -16,7 +16,7 @@ use embedded_hal::digital::v2::{InputPin, IoPin, OutputPin, PinState};
 /// Records momentary push button events
 ///
 /// Cycles can be converted to time by multiplying by the scan period (Matrix::period())
-#[derive(Copy, Clone, Debug, PartialEq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
 pub enum KeyEvent {
     On {
         /// Cycles since the last state change
