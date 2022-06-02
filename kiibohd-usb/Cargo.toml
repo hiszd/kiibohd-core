@@ -32,9 +32,9 @@ hidio = ["kiibohd-hid-io"]
 mouse = []
 
 # defmt support
-defmt = ["dep:defmt", "heapless/defmt-impl", "kiibohd-hid-io?/defmt", "kll-core?/defmt"]
+#defmt = ["dep:defmt", "heapless/defmt-impl", "kiibohd-hid-io?/defmt", "kll-core?/defmt"]
 # TODO: Waiting for the next version of usb-device to enable the feature
-#defmt = ["dep:defmt", "heapless/defmt-impl", "kiibohd-hid-io?/defmt", "kll-core?/defmt", "usb-device/defmt", "usbd-hid/defmt-impl"]
+defmt = ["dep:defmt", "heapless/defmt-impl", "kiibohd-hid-io?/defmt", "kll-core?/defmt", "usb-device/defmt", "usbd-hid/defmt-impl"]
 
 # kll-core Capability Event enqueuing support
 kll-core = ["dep:kll-core"]
