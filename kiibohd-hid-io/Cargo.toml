@@ -1,6 +1,6 @@
 [package]
 name          = "kiibohd-hid-io"
-version       = "0.1.0"
+version       = "0.1.1"
 authors       = ["Jacob Alexander <haata@kiibohd.com>"]
 license       = "MIT OR Apache-2.0"
 repository    = "https://github.com/kiibohd/kiibohd-core"
@@ -14,6 +14,9 @@ edition = "2021"
 
 [dependencies]
 heapless        = { version = "^0.7.10" }
-hid-io-protocol = { version = "0.1", git = "https://github.com/hid-io/hid-io-core", default-features = false, features = ["device", "defmt-impl"] }
+hid-io-protocol = { version = "0.1", git = "https://github.com/hid-io/hid-io-core", default-features = false, features = ["device"] }
 kll-core        = { version = "0.1", path = "../kll-core" }
 pkg-version     = { version = "^1.0" }
+
+[features]
+defmt = ["heapless/defmt-impl", "hid-io-protocol/defmt-impl", "kll-core/defmt"]

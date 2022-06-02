@@ -11,8 +11,9 @@
 /// Locales defined by the USB HID Spec v1.11
 /// <http://www.usb.org/developers/hidpage/HID1_11.pdf> (6.2.1) HID Descriptor
 /// 36-255 are reserved
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Locale {
     Undefined = 0,
     Arabic = 1,
@@ -57,8 +58,9 @@ pub enum Locale {
 /// 0xA5 to 0xAF are reserved
 /// 0xDE to 0xDF are reserved
 /// 0xE8 to 0xFF are reserved
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Keyboard {
     NoEvent = 0x00,
     ErrorRollOver = 0x01,
@@ -317,8 +319,9 @@ impl From<LedIndicator> for u8 {
 
 /// HID LED Indicators
 /// List of LED codes - USB HID 1.12v2 pg 61
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum LedIndicator {
     Undefined = 0x00,
     NumLock = 0x01,
@@ -390,8 +393,9 @@ pub enum LedIndicator {
 /// 0x94 - 0x9F Reserved
 /// 0xA9 - 0xAF Reserved
 /// 0xB8 - 0xFFFF Reserved
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SystemControl {
     PowerDown = 0x81,
     Sleep = 0x82,
@@ -457,8 +461,9 @@ pub enum SystemControl {
 /// Application Launch Buttons pg 79
 /// Generic GUI Application Controls pg 82
 /// TODO: Where does 0x29D come from?
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[repr(u16)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ConsumerControl {
     _10 = 0x020,
     _100 = 0x021,

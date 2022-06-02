@@ -14,24 +14,10 @@ mod test;
 
 // ----- Crates -----
 
-#[cfg(any(
-    feature = "defmt-default",
-    feature = "defmt-trace",
-    feature = "defmt-debug",
-    feature = "defmt-info",
-    feature = "defmt-warn",
-    feature = "defmt-error"
-))]
+#[cfg(feature = "defmt")]
 use defmt::*;
 use heapless::Vec;
-#[cfg(not(any(
-    feature = "defmt-default",
-    feature = "defmt-trace",
-    feature = "defmt-debug",
-    feature = "defmt-info",
-    feature = "defmt-warn",
-    feature = "defmt-error"
-)))]
+#[cfg(not(feature = "defmt"))]
 use log::*;
 
 // TODO Use features to determine which lookup table to use
@@ -42,7 +28,8 @@ use rawlookup::MODEL;
 /// Calibration status indicates if a sensor position is ready to send
 /// analysis for a particular key.
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq, Eq, defmt::Format)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CalibrationStatus {
     NotReady = 0,                 // Still trying to determine status (from power-on)
     SensorMissing = 1,            // ADC value at 0
@@ -52,7 +39,8 @@ pub enum CalibrationStatus {
     InvalidIndex = 5, // Invalid index
 }
 
-#[derive(Clone, Debug, defmt::Format)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SensorError {
     CalibrationError(SenseData),
     FailedToResize(usize),
@@ -67,7 +55,8 @@ pub enum SensorError {
 ///
 /// These calculations assume constant time delta of 1
 #[repr(C)]
-#[derive(Clone, Debug, defmt::Format)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SenseAnalysis {
     raw: u16,          // Raw ADC reading
     distance: i16,     // Distance value (lookup + min/max alignment)
@@ -128,7 +117,8 @@ impl SenseAnalysis {
 
 /// Stores incoming raw samples
 #[repr(C)]
-#[derive(Clone, Debug, defmt::Format)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RawData {
     scratch_samples: u8,
     scratch: u32,
@@ -185,7 +175,8 @@ impl RawData {
 
 /// Sense stats include statistically information about the sensor data
 #[repr(C)]
-#[derive(Clone, Debug, defmt::Format)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SenseStats {
     pub min: u16,     // Minimum raw value (reset when out of calibration)
     pub max: u16,     // Maximum raw value (reset when out of calibration)
@@ -251,7 +242,8 @@ impl SenseStats {
 /// * MNOK: Min valid calibration (Wrong magnet direction; wrong pole, less than a specific value)
 /// * MXOK: Max valid calibration (Bad Sensor threshold; sensor is bad if reading is higher than this value)
 /// * NS: No sensor detected (less than a specific value)
-#[derive(Clone, Debug, defmt::Format)]
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SenseData {
     pub analysis: SenseAnalysis,
     pub cal: CalibrationStatus,

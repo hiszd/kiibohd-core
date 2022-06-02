@@ -10,23 +10,9 @@
 mod descriptor;
 mod test;
 
-#[cfg(any(
-    feature = "defmt-default",
-    feature = "defmt-trace",
-    feature = "defmt-debug",
-    feature = "defmt-info",
-    feature = "defmt-warn",
-    feature = "defmt-error"
-))]
+#[cfg(feature = "defmt")]
 use defmt::{error, trace, warn};
-#[cfg(not(any(
-    feature = "defmt-default",
-    feature = "defmt-trace",
-    feature = "defmt-debug",
-    feature = "defmt-info",
-    feature = "defmt-warn",
-    feature = "defmt-error"
-)))]
+#[cfg(not(feature = "defmt"))]
 use log::{error, trace, warn};
 
 pub use crate::descriptor::{
@@ -50,7 +36,7 @@ use heapless::Vec;
 use kiibohd_hid_io::{CommandInterface, KiibohdCommandInterface};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "defmt-impl", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum KeyState {
     /// Press the given USB HID Keyboard code
     Press(u8),
@@ -63,7 +49,7 @@ pub enum KeyState {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "defmt-impl", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum MouseState {
     /// Press the given mouse button (1->8)
     Press(u8),
@@ -82,7 +68,7 @@ pub enum MouseState {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "defmt-impl", derive(defmt::Format))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CtrlState {
     /// Press the given USB HID System Ctrl code
     SystemCtrlPress(u8),

@@ -1,6 +1,6 @@
 [package]
 name = "kll-hid"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jacob Alexander <haata@kiibohd.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -11,6 +11,7 @@ keywords = ["no-std", "usb", "hid", "embedded"]
 categories = ["embedded", "no-std"]
 
 [dependencies]
-defmt = "0.3"
+defmt = { version = "0.3", optional = true }
 
-[dev-dependencies]
+[features]
+defmt = ["dep:defmt"]

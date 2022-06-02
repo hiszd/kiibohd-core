@@ -15,7 +15,8 @@ use heapless::{FnvIndexMap, Vec};
 
 // ----- Enums -----
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum LayerProcessMode {
     Layer,
     TriggerType,
@@ -25,7 +26,8 @@ enum LayerProcessMode {
     Triggers(u8),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 enum StateStatus {
     /// TriggerCondition + u8 offset position
     TriggerPos {
@@ -52,7 +54,8 @@ enum StateStatus {
     Done,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ProcessError {
     /// MAX_OFF_STATE_LOOKUP is too small
     FailedOffStatePush,
@@ -64,7 +67,8 @@ pub enum ProcessError {
 
 // ----- Structs -----
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, defmt::Format)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 struct Layer {
     state: layer::State,
     /// Last operation that touched this layer state

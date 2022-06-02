@@ -1,6 +1,6 @@
 [package]
 name = "kiibohd-usb"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jacob Alexander <haata@kiibohd.com>"]
 edition = "2021"
 description = "Kiibohd USB HID Interface"
@@ -11,7 +11,7 @@ repository = "https://github.com/kiibohd/kiibohd-core"
 
 [dependencies]
 defmt = { version = "0.3", optional = true }
-heapless = { version = "^0.7.10", features = ["defmt-impl"] }
+heapless = { version = "^0.7.10" }
 kiibohd-hid-io = { version = "0.1.0", path = "../kiibohd-hid-io", optional = true }
 kll-core = { version = "0.1", path = "../kll-core", optional = true }
 log = { version = "^0.4", default-features = false }
@@ -31,16 +31,8 @@ hidio = ["kiibohd-hid-io"]
 # Mouse Support can be disabled
 mouse = []
 
-# Defmt logging disabled by default
-defmt-default = ["defmt", "defmt-impl"]
-defmt-trace = ["defmt", "defmt-impl"]
-defmt-debug = ["defmt", "defmt-impl"]
-defmt-info = ["defmt", "defmt-impl"]
-defmt-warn = ["defmt", "defmt-impl"]
-defmt-error = ["defmt", "defmt-impl"]
-
-#defmt-impl = ["usb-device/defmt-impl", "usbd-hid/defmt-impl"]
-defmt-impl = []
+# defmt support
+defmt = ["dep:defmt", "heapless/defmt-impl", "kiibohd-hid-io?/defmt", "kll-core?/defmt", "usb-device/defmt", "usbd-hid/defmt-impl"]
 
 # kll-core Capability Event enqueuing support
 kll-core = ["dep:kll-core"]

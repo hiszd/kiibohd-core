@@ -18,3 +18,7 @@ exclude = [
   "kiibohd-core-ffi",
   "kiibohd-hid-io-ffi",
 ]
+
+# Make sure any dependencies also use the kll-core in this workspace
+[patch.crates-io]
+kll-core = { path = "kll-core" }

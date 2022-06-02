@@ -8,7 +8,8 @@
 
 use core::ops::Not;
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug, defmt::Format)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum State {
     On,
     Off,

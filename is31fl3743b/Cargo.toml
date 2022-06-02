@@ -1,6 +1,6 @@
 [package]
 name = "is31fl3743b"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jacob Alexander <haata@kiibohd.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -9,14 +9,7 @@ repository = "https://github.com/kiibohd/kiibohd-core"
 keywords = ["no-std", "embedded", "hardware-support"]
 categories = ["embedded", "no-std"]
 
-[features]
-default = [
-  "heapless/x86-sync-pool", # TODO REMOVEME
-]
-
 [dependencies]
 defmt = "0.3"
 embedded-hal = "0.2.7"
-heapless = "^0.7.10"
-
-[dev-dependencies]
+heapless = { version = "^0.7.10", features = ["defmt-impl"] }
