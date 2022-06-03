@@ -715,6 +715,7 @@ impl<'a, const LAYOUT_SIZE: usize> LayerLookup<'a, LAYOUT_SIZE> {
     /// A TriggerList is a list of indices that correspond to a specific TriggerGuide -> ResultGuide
     /// mapping.
     pub fn trigger_list(&self, (layer, ttype, index): (u8, u8, u16)) -> Option<&'a [u8]> {
+        #[cfg(not(feature = "defmt"))]
         trace!("layer_lookup: {:?}", self.layer_lookup);
         match self.layer_lookup.get(&(layer, ttype, index)) {
             Some(lookup) => {
