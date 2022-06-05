@@ -136,8 +136,8 @@ pub struct MouseReport {
 /// <https://github.com/hid-io/hid-io-core/tree/master/hid-io-protocol>
 #[gen_hid_descriptor(
     (collection = APPLICATION, usage_page = 0xFF1C, usage = 0x1100) = {
-        rx=output;
-        tx=input;
+        (usage = 0x01,) = { rx=output; };
+        (usage = 0x02,) = { tx=input; };
     }
 )]
 pub struct HidioReport {
