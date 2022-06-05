@@ -782,6 +782,11 @@ pub enum CapabilityRun {
         index: u16,
     },
 
+    /// Analog Event
+    /// Always a passthrough event
+    /// 4 bytes
+    Analog { state: CapabilityEvent },
+
     /// Sends URL (using index stored unicode string) to host computer web browser
     /// 6 bytes
     HidioOpenUrl { state: CapabilityEvent, index: u16 },
@@ -818,6 +823,7 @@ impl CapabilityRun {
             CapabilityRun::PixelGammaControl { state, .. } => *state,
             CapabilityRun::PixelLedControl { state, .. } => *state,
             CapabilityRun::PixelTest { state, .. } => *state,
+            CapabilityRun::Analog { state } => *state,
             CapabilityRun::HidioOpenUrl { state, .. } => *state,
             CapabilityRun::HidioUnicodeString { state, .. } => *state,
             CapabilityRun::HidioUnicodeState { state, .. } => *state,

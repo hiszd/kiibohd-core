@@ -5,6 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+mod analog;
 mod animation;
 mod layer;
 mod led;
@@ -12,7 +13,7 @@ mod rotation;
 mod switch;
 
 mod convert {
-    use crate::converters::{animation, layer, led, rotation, switch};
+    use crate::converters::{analog, animation, layer, led, rotation, switch};
     use crate::{Capability, CapabilityEvent, CapabilityRun, TriggerCondition, TriggerEvent};
 
     impl From<TriggerEvent> for CapabilityRun {
@@ -26,10 +27,10 @@ mod convert {
                 TriggerEvent::None => CapabilityRun::NoOp {
                     state: CapabilityEvent::None,
                 },
-                // TriggerEvent::AnalogDistance=>,
-                // TriggerEvent::AnalogVelocity=>,
-                // TriggerEvent::AnalogAcceleration=>,
-                // TriggerEvent::AnalogJerk=>,
+                TriggerEvent::AnalogDistance { .. } => analog::convert(event),
+                TriggerEvent::AnalogVelocity { .. } => analog::convert(event),
+                TriggerEvent::AnalogAcceleration { .. } => analog::convert(event),
+                TriggerEvent::AnalogJerk { .. } => analog::convert(event),
                 // TriggerEvent::Sleep =>,
                 // TriggerEvent::Resume=>,
                 // TriggerEvent::Inactive=>,

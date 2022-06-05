@@ -28,8 +28,8 @@ default = ["hidio", "mouse"]
 # HID-IO Support can be disabled
 hidio = ["kiibohd-hid-io"]
 
-# Mouse Support can be disabled
-mouse = []
+# Mouse Support can be disabled (requires a larger control buffer)
+mouse = ["usb-device/control-buffer-256"]
 
 # defmt support
 #defmt = ["dep:defmt", "heapless/defmt-impl", "kiibohd-hid-io?/defmt", "kll-core?/defmt"]
