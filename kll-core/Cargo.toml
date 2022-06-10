@@ -10,9 +10,7 @@ keywords = ["no-std", "embedded", "keyboard"]
 categories = ["embedded", "no-std"]
 
 [features]
-default = ["std"]
-
-std = ["log"]
+default = []
 
 # Defmt logging disabled by default
 defmt = ["dep:defmt", "heapless/defmt-impl", "kll-hid/defmt"]
@@ -25,7 +23,7 @@ enum-primitive-derive = "0.2.2"
 heapless              = "^0.7.10"
 kll-hid               = { version = "0.1", path = "../kll-hid" }
 kll-macros            = { version = "0.1", path = "../kll-macros" }
-log                   = { version = "^0.4", default-features = false, optional = true }
+log                   = { version = "^0.4", default-features = false }
 num-traits            = { version = "0.2", default-features = false }
 static_assertions     = "1.1"
 transmute             = "0.1"
