@@ -370,6 +370,7 @@ impl<
                         offset: 0,
                     }
                 };
+                trace!("guide state: {:?}", state);
 
                 // Determine if this trigger is valid
                 // If we have a new trigger on a state that is processing a result, ignore this
@@ -398,16 +399,22 @@ impl<
                     for cond in trigger_guide {
                         match cond.evaluate(event, self.layer_lookup.loop_condition_lookup) {
                             Vote::Positive => {
+                                trace!("eval({:?}): Positive", cond);
                                 remaining -= 1;
                             }
                             Vote::Negative => {
+                                trace!("eval({:?}): Negative", cond);
                                 // Remove lookup state entry, continue to next guide
                                 self.lookup_state.remove(&guide);
                                 removed_lookup_state = true;
                                 break;
                             }
-                            Vote::Insufficient => {} // Do nothing
+                            Vote::Insufficient => {
+                                trace!("eval({:?}): Insufficient", cond);
+                                // Do nothing
+                            }
                             Vote::OffState => {
+                                trace!("eval({:?}): OffState", cond);
                                 // Attempt to push a reverse lookup query
                                 // The results of the query will be another set of TriggerEvents
                                 if self
@@ -557,7 +564,7 @@ impl<
 
                     // Update status position
                     // Check to see if the time_instance is 0, so we can set it
-                    if *offset == 0 {
+                    if *offset == 0 && completed_cond != result_guide.len() {
                         *status = StateStatus::ResultPos {
                             time_instance: self.time_instance,
                             event: *event,
