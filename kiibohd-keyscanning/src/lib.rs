@@ -270,7 +270,7 @@ mod converters {
     use kll_core::TriggerEvent;
 
     impl KeyEvent {
-        pub fn trigger_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
+        pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {
             Vec::from_slice(&[match self {
                 KeyEvent::On {
                     cycles_since_state_change,
@@ -301,12 +301,15 @@ mod converters {
                             index: index as u16,
                             last_state: 0,
                         }
-                    } else {
+                    } else if !ignore_off {
                         kll_core::TriggerEvent::Switch {
                             state: kll_core::trigger::Phro::Off,
                             index: index as u16,
                             last_state: *cycles_since_state_change,
                         }
+                    } else {
+                        // Ignoring the off state
+                        return Vec::new();
                     }
                 }
             }])

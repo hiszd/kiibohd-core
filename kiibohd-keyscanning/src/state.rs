@@ -28,6 +28,7 @@ impl Not for State {
 
 /// The KeyState handles all of the decision making and state changes based on a high or low signal from a GPIO pin
 #[derive(Copy, Clone)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KeyState<
     const CSIZE: usize,
     const SCAN_PERIOD_US: u32,
@@ -104,7 +105,7 @@ impl<const CSIZE: usize, const SCAN_PERIOD_US: u32, const DEBOUNCE_US: u32, cons
 
             // Start debounce tracking (if we haven't already started)
             self.debounce_tracking = true;
-            self.raw_state_average += 1;
+            self.raw_state_average = 0; // Reset average
 
             // Return current state
             return self.state();
@@ -112,6 +113,12 @@ impl<const CSIZE: usize, const SCAN_PERIOD_US: u32, const DEBOUNCE_US: u32, cons
 
         // Increment debounce cycle counter
         self.cycles_since_last_bounce += 1;
+
+        // If we've hit max, don't wrap-around to 0
+        // Set to the defined bounce limit so not to affect any logic
+        if self.cycles_since_last_bounce >= u32::MAX / SCAN_PERIOD_US * CSIZE as u32 {
+            self.cycles_since_last_bounce = DEBOUNCE_US / SCAN_PERIOD_US / CSIZE as u32;
+        }
 
         // Update the debounced state if it has changed and exceeded the debounce timer
         // (debounce timer resets if there is any bouncing during the debounce interval).
@@ -149,6 +156,12 @@ impl<const CSIZE: usize, const SCAN_PERIOD_US: u32, const DEBOUNCE_US: u32, cons
 
         // Increment state cycle counter
         self.cycles_since_state_change += 1;
+
+        // If we've hit max, don't wrap-around to 0
+        // Set the defined idle limit so not to affect any logic
+        if self.cycles_since_state_change >= u32::MAX / SCAN_PERIOD_US / CSIZE as u32 {
+            self.cycles_since_state_change = IDLE_MS * 1000 / CSIZE as u32 / SCAN_PERIOD_US;
+        }
 
         // Determine if key is idle
         // Must be both in the off state and have been off >= IDLE_MS
