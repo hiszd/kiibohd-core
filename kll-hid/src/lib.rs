@@ -297,7 +297,7 @@ impl From<u16> for Keyboard {
 /// # Safety
 impl From<Keyboard> for u16 {
     fn from(index: Keyboard) -> u16 {
-        unsafe { core::mem::transmute(index as u16) }
+        index as u16
     }
 }
 
@@ -313,7 +313,7 @@ impl From<u8> for LedIndicator {
 /// # Safety
 impl From<LedIndicator> for u8 {
     fn from(index: LedIndicator) -> u8 {
-        unsafe { core::mem::transmute(index as u8) }
+        index as u8
     }
 }
 
