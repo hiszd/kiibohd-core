@@ -11,9 +11,9 @@ mod descriptor;
 mod test;
 
 #[cfg(feature = "defmt")]
-use defmt::{error, trace, warn};
+use defmt::*;
 #[cfg(not(feature = "defmt"))]
-use log::{error, trace, warn};
+use log::*;
 
 pub use crate::descriptor::{
     HidioReport, KeyboardNkroReport, MouseReport, SysCtrlConsumerCtrlReport,
@@ -195,15 +195,19 @@ pub struct HidInterface<
     kbd_nkro: HIDClass<'a, B>,
     kbd_nkro_report: KeyboardNkroReport,
     kbd_consumer: Consumer<'a, KeyState, KBD_SIZE>,
+    kbd_updated: bool,
     ctrl: HIDClass<'a, B>,
     ctrl_consumer: Consumer<'a, CtrlState, CTRL_SIZE>,
     ctrl_report: SysCtrlConsumerCtrlReport,
+    ctrl_updated: bool,
     #[cfg(feature = "mouse")]
     mouse: HIDClass<'a, B>,
     #[cfg(feature = "mouse")]
     mouse_consumer: Consumer<'a, MouseState, MOUSE_SIZE>,
     #[cfg(feature = "mouse")]
     mouse_report: MouseReport,
+    #[cfg(feature = "mouse")]
+    mouse_updated: bool,
     #[cfg(feature = "hidio")]
     hidio: HIDClass<'a, B>,
 }
@@ -260,12 +264,14 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
                 keybitmap: [0; 29],
             },
             kbd_consumer,
+            kbd_updated: true,
             ctrl,
             ctrl_consumer,
             ctrl_report: SysCtrlConsumerCtrlReport {
                 consumer_ctrl: 0,
                 system_ctrl: 0,
             },
+            ctrl_updated: true,
             #[cfg(feature = "mouse")]
             mouse,
             #[cfg(feature = "mouse")]
@@ -278,6 +284,8 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
                 vert_wheel: 0,
                 horz_wheel: 0,
             },
+            #[cfg(feature = "mouse")]
+            mouse_updated: true,
             #[cfg(feature = "hidio")]
             hidio,
         }
@@ -365,14 +373,13 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
         }
     }
 
-    fn update_kbd(&mut self) -> bool {
-        let mut updated = false;
-
+    fn update_kbd(&mut self) {
         // Empty kbd queue
         loop {
             match self.kbd_consumer.dequeue() {
                 Some(state) => {
-                    updated = true;
+                    self.kbd_updated = true;
+                    debug!("kbd: {:?}", state);
                     match state {
                         KeyState::Press(key) => {
                             // Ignore 0
@@ -425,6 +432,8 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
                             self.nkro_bit(key, false);
                         }
                         KeyState::Clear => {
+                            self.kbd_updated = true;
+
                             // - 6KRO -
                             self.kbd_6kro_report.modifier = 0;
                             self.kbd_6kro_report.keycodes = [0; 6];
@@ -436,48 +445,39 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
                     }
                 }
                 None => {
-                    return updated;
+                    return;
                 }
             }
         }
     }
 
-    fn push_6kro_kbd(&mut self) {
+    fn push_6kro_kbd(&mut self) -> Result<(), UsbError> {
         if let Err(val) = self.kbd_6kro.push_input(&self.kbd_6kro_report) {
-            error!("6KRO Buffer Overflow: {:?}", val);
+            trace!("6KRO Buffer Overflow: {:?}", val);
+            Err(val)
+        } else {
+            Ok(())
         }
     }
 
-    fn push_nkro_kbd(&mut self) {
+    fn push_nkro_kbd(&mut self) -> Result<(), UsbError> {
         if let Err(val) = self.kbd_nkro.push_input(&self.kbd_nkro_report) {
-            error!("NKRO Buffer Overflow: {:?}", val);
+            trace!("NKRO Buffer Overflow: {:?}", val);
+            Err(val)
+        } else {
+            Ok(())
         }
     }
 
+    /// Updates self.mouse_report and indicates if there are any changes
+    /// Changes are used to determine if USB Resume is necessary before pushing
+    /// the next packet.
     #[cfg(feature = "mouse")]
-    fn mouse_button_bit(&mut self, button: u8, press: bool) {
-        // Ignore keys outside of 1 to 8
-        if let 1..=8 = button {
-            let button = button - 1;
-            // Determine position
-            let bit: usize = (button % 8).into();
-
-            // Set/Unset
-            if press {
-                self.mouse_report.buttons |= 1 << bit;
-            } else {
-                self.mouse_report.buttons &= !(1 << bit);
-            }
-        }
-    }
-
-    #[cfg(feature = "mouse")]
-    fn push_mouse(&mut self) {
-        let mut updated = false;
-
+    fn update_mouse(&mut self) {
         // Empty mouse queue
         while let Some(state) = self.mouse_consumer.dequeue() {
-            updated = true;
+            self.mouse_updated = true;
+            debug!("mouse: {:?}", state);
             match state {
                 MouseState::Press(key) => {
                     self.mouse_button_bit(key, true);
@@ -501,12 +501,31 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
                 MouseState::Unknown => {}
             }
         }
+    }
 
-        // Push report
-        if updated {
-            if let Err(val) = self.mouse.push_input(&self.mouse_report) {
-                error!("Mouse Buffer Overflow: {:?}", val);
+    #[cfg(feature = "mouse")]
+    fn mouse_button_bit(&mut self, button: u8, press: bool) {
+        // Ignore keys outside of 1 to 8
+        if let 1..=8 = button {
+            let button = button - 1;
+            // Determine position
+            let bit: usize = (button % 8).into();
+
+            // Set/Unset
+            if press {
+                self.mouse_report.buttons |= 1 << bit;
+            } else {
+                self.mouse_report.buttons &= !(1 << bit);
             }
+        }
+    }
+
+    #[cfg(feature = "mouse")]
+    fn push_mouse(&mut self) -> Result<(), UsbError> {
+        // Push report
+        if let Err(val) = self.mouse.push_input(&self.mouse_report) {
+            trace!("Mouse Buffer Overflow: {:?}", val);
+            return Err(val);
         }
 
         // Clear relative fields
@@ -514,14 +533,17 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
         self.mouse_report.y = 0;
         self.mouse_report.vert_wheel = 0;
         self.mouse_report.horz_wheel = 0;
+        Ok(())
     }
 
-    fn push_ctrl(&mut self) {
-        let mut updated = false;
-
+    /// Update self.ctrl_report and indicates if there are any changes
+    /// Changes are used to determine if USB Resume is necessary before pushing
+    /// the next packet.
+    fn update_ctrl(&mut self) {
         // Empty ctrl queue
         while let Some(state) = self.ctrl_consumer.dequeue() {
-            updated = true;
+            self.ctrl_updated = true;
+            debug!("ctrl/cons: {:?}", state);
             match state {
                 CtrlState::SystemCtrlPress(key) => {
                     self.ctrl_report.system_ctrl = key;
@@ -542,38 +564,85 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
                 CtrlState::Unknown => {}
             }
         }
+    }
 
+    fn push_ctrl(&mut self) -> Result<(), UsbError> {
         // Push report
-        if updated {
-            if let Err(val) = self.ctrl.push_input(&self.ctrl_report) {
-                error!("Ctrl Buffer Overflow: {:?}", val);
-            }
+        if let Err(val) = self.ctrl.push_input(&self.ctrl_report) {
+            trace!("Ctrl Buffer Overflow: {:?}", val);
+            Err(val)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Update buffers to be ready to push over USB
+    /// This is useful for remote wakeup where we only want to send a remote wakeup if an event has
+    /// occurred. But before sending the data to the USB buffer registers.
+    ///
+    /// Returns true if any descriptor was updated
+    pub fn update(&mut self) -> bool {
+        // Update descriptors
+        self.update_kbd();
+        self.update_ctrl();
+        #[cfg(feature = "mouse")]
+        self.update_mouse();
+
+        // Collect all report statuses
+        #[cfg(feature = "mouse")]
+        {
+            self.kbd_updated || self.ctrl_updated || self.mouse_updated
+        }
+        #[cfg(not(feature = "mouse"))]
+        {
+            self.kbd_updated || self.ctrl_updated
         }
     }
 
     /// Processes each of the spsc queues and pushes data over USB
     /// This is primarily for keyboard, mouse and ctrl interfaces.
     /// HID-IO is handled with poll()
-    pub fn push(&mut self) {
-        // Update keyboard if necessary
-        if self.update_kbd() {
+    ///
+    /// This function automatically handles USB Resume if required.
+    ///
+    /// NOTE: You must call update() first before calling push().
+    ///
+    /// Returns possibly returns UsbError::WouldBlock in which case the
+    /// USB buffer is full and you should call push before queuing up more
+    /// keypresses. Normally it's safe to add more events; however, it's possible
+    /// you may lose an event (very slim chance).
+    pub fn push(&mut self) -> Result<(), UsbError> {
+        // Send keyboard report
+        if self.kbd_updated {
             // Check protocol mode to decide nkro vs. 6kro (boot)
             match self.get_kbd_protocol_mode() {
                 HidProtocolMode::Report => {
-                    self.push_nkro_kbd();
+                    trace!("NKRO Push");
+                    self.push_nkro_kbd()?;
                 }
                 HidProtocolMode::Boot => {
-                    self.push_6kro_kbd();
+                    trace!("6KRO Push");
+                    self.push_6kro_kbd()?;
                 }
             }
+            self.kbd_updated = false;
         }
 
         // Push consumer and system control reports
-        self.push_ctrl();
+        if self.ctrl_updated {
+            trace!("Ctrl/Cons Push");
+            self.push_ctrl()?;
+            self.ctrl_updated = false;
+        }
 
         // Push mouse reports
         #[cfg(feature = "mouse")]
-        self.push_mouse();
+        if self.mouse_updated {
+            trace!("Mouse Push");
+            self.push_mouse()?;
+            self.mouse_updated = false;
+        }
+        Ok(())
     }
 
     /// Poll the HID-IO interface

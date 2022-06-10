@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -43,20 +43,15 @@ fn test_keyboard_nkro_descriptor() {
         0x15, 0x00, //   Logical Minimum (0)
         0x25, 0x01, //   Logical Maximum (1)
         0x75, 0x01, //   Report Size (1)
-        0x95, 0x05, //   Report Count (5)
+        0x95, 0x08, //   Report Count (8)
         0x91, 0x02, //   Output
         //               (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
-        0x95, 0x03, //   Report Count (3)
-        0x91, 0x03, //   Output
-        //               (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
         0x05, 0x07, //   Usage Page (Kbrd/Keypad)
         0x19, 0x01, //   Usage Minimum (0x01)
         0x29, 0xE7, //   Usage Maximum (0xE7)
-        0x95, 0xE7, //   Report Count (231)
-        0x81, 0x00, //   Input
+        0x95, 0xE8, //   Report Count (232)
+        0x81, 0x02, //   Input
         //               (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
-        0x95, 0x01, //   Report Count (1)
-        0x81, 0x03, //   Input (Const,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
         0xC0, // End Collection
     ];
     //libc_print::libc_println!("NKRO: {:02X?}", KeyboardNkroReport::desc());

@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -41,16 +41,16 @@ use usbd_hid::descriptor::generator_prelude::*;
     (collection = APPLICATION, usage_page = GENERIC_DESKTOP, usage = KEYBOARD) = {
         // LED Report
         (usage_page = LEDS, usage_min = 0x01, usage_max = 0x05) = {
-            #[packed_bits 5] #[item_settings data,variable,absolute] leds=output;
+            #[packed_bits 8] #[item_settings data,variable,absolute] leds=output;
         };
 
-        // 1-231 (29 bytes/231 bits)
+        // 1-231 (29 bytes/232 bits)
         (usage_page = KEYBOARD, usage_min = 0x01, usage_max = 0xE7) = {
-            #[packed_bits 231] #[item_settings data,array,absolute] keybitmap=input;
+            #[packed_bits 232] #[item_settings data,variable,absolute] keybitmap=input;
         };
     }
 )]
-
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KeyboardNkroReport {
     pub leds: u8,
     pub keybitmap: [u8; 29],
@@ -77,7 +77,7 @@ pub struct KeyboardNkroReport {
         // System Control Collection (8 bits)
         //
         // NOTES:
-        // Not bothering with NKRO for this table. If there's need, I can implement it. -HaaTa
+        // Not bothering with NKRO for this table. If there's a need, I can implement it. -HaaTa
         // Using a 1KRO scheme
         // XXX (HaaTa):
         //  Logical Minimum must start from 1 (not 0!) to resolve MS Windows issues
@@ -140,6 +140,7 @@ pub struct MouseReport {
         (usage = 0x02,) = { tx=input; };
     }
 )]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct HidioReport {
     rx: [u8; 64],
     tx: [u8; 64],
