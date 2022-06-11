@@ -18,7 +18,7 @@ use log::*;
 pub use crate::descriptor::{
     HidioReport, KeyboardNkroReport, MouseReport, SysCtrlConsumerCtrlReport,
 };
-use heapless::spsc::Consumer;
+use heapless::spsc::{Consumer, Producer};
 use usb_device::bus::{UsbBus, UsbBusAllocator};
 use usb_device::class::UsbClass;
 use usbd_hid::descriptor::generator_prelude::*;
@@ -26,9 +26,6 @@ use usbd_hid::descriptor::KeyboardReport;
 use usbd_hid::hid_class::{HIDClass, HidClassSettings, HidProtocol, HidSubClass};
 pub use usbd_hid::hid_class::{HidCountryCode, HidProtocolMode, ProtocolModeConfig};
 use usbd_hid::UsbError;
-
-#[cfg(feature = "kll-core")]
-use heapless::spsc::Producer;
 
 #[cfg(feature = "hidio")]
 use heapless::Vec;
@@ -84,6 +81,15 @@ pub enum CtrlState {
     Unknown,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum LedState {
+    /// HID Lock LED Activates
+    Activate(u8),
+    /// HID Lock LED Deactivates
+    Deactivate(u8),
+}
+
 /// USB HID Combination Interface
 ///
 /// Handles creation and management of multiple USB HID interfaces through SPSC queues.
@@ -107,6 +113,7 @@ pub enum CtrlState {
 ///
 /// // These define the maximum pending items in each queue
 /// const KBD_QUEUE_SIZE: usize = 10; // This would limit NKRO mode to 10KRO
+/// const KBD_LED_QUEUE_SIZE: usize = 3;
 /// const MOUSE_QUEUE_SIZE: usize = 5;
 /// const CTRL_QUEUE_SIZE: usize = 2;
 ///
@@ -134,6 +141,7 @@ pub enum CtrlState {
 /// // Setup the queues used to generate the input reports (ctrl, keyboard and mouse)
 /// let ctrl_queue: Queue<kiibohd_usb::CtrlState, CTRL_QUEUE_SIZE> = Queue::new();
 /// let kbd_queue: Queue<kiibohd_usb::KeyState, KBD_QUEUE_SIZE> = Queue::new();
+/// let kbd_led_queue: Queue<kiibohd_usb::LedState, KBD_LED_QUEUE_SIZE> = Queue::new();
 /// let mouse_queue: Queue<kiibohd_usb::MouseState, MOUSE_QUEUE_SIZE> = Queue::new();
 /// let (kbd_producer, kbd_consumer) = kbd_queue.split();
 /// let (mouse_producer, mouse_consumer) = mouse_queue.split();
@@ -145,6 +153,7 @@ pub enum CtrlState {
 ///     usb_bus,
 ///     HidCountryCode::NotSupported,
 ///     kbd_consumer,
+///     kbd_led_producer,
 ///     mouse_consumer,
 ///     ctrl_consumer,
 /// );
@@ -171,6 +180,8 @@ pub enum CtrlState {
 /// // To push keyboard key report, first push to the queue, then process all queues
 /// kbd_producer.enqueue(kiibohd_usb::KeyState::Press(0x04)); // Press the A key
 /// usb_hid.push();
+/// // To retrieve lock leds (and enqueue events)
+/// usb_hid.pull();
 ///
 /// // In the USB interrupt (or similar), usb_hid will also need to be handled (Ctrl EP requests)
 /// fn usb_irq() {
@@ -187,6 +198,7 @@ pub struct HidInterface<
     'a,
     B: UsbBus,
     const KBD_SIZE: usize,
+    const KBD_LED_SIZE: usize,
     const MOUSE_SIZE: usize,
     const CTRL_SIZE: usize,
 > {
@@ -196,6 +208,8 @@ pub struct HidInterface<
     kbd_nkro_report: KeyboardNkroReport,
     kbd_consumer: Consumer<'a, KeyState, KBD_SIZE>,
     kbd_updated: bool,
+    kbd_led_producer: Producer<'a, LedState, KBD_LED_SIZE>,
+    kbd_led_state: u8,
     ctrl: HIDClass<'a, B>,
     ctrl_consumer: Consumer<'a, CtrlState, CTRL_SIZE>,
     ctrl_report: SysCtrlConsumerCtrlReport,
@@ -212,16 +226,22 @@ pub struct HidInterface<
     hidio: HIDClass<'a, B>,
 }
 
-impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE: usize>
-    HidInterface<'_, B, KBD_SIZE, MOUSE_SIZE, CTRL_SIZE>
+impl<
+        B: UsbBus,
+        const KBD_SIZE: usize,
+        const KBD_LED_SIZE: usize,
+        const MOUSE_SIZE: usize,
+        const CTRL_SIZE: usize,
+    > HidInterface<'_, B, KBD_SIZE, KBD_LED_SIZE, MOUSE_SIZE, CTRL_SIZE>
 {
     pub fn new<'a>(
         alloc: &'a UsbBusAllocator<B>,
         locale: HidCountryCode,
         kbd_consumer: Consumer<'a, KeyState, KBD_SIZE>,
+        kbd_led_producer: Producer<'a, LedState, KBD_LED_SIZE>,
         #[cfg(feature = "mouse")] mouse_consumer: Consumer<'a, MouseState, MOUSE_SIZE>,
         ctrl_consumer: Consumer<'a, CtrlState, CTRL_SIZE>,
-    ) -> HidInterface<'a, B, KBD_SIZE, MOUSE_SIZE, CTRL_SIZE> {
+    ) -> HidInterface<'a, B, KBD_SIZE, KBD_LED_SIZE, MOUSE_SIZE, CTRL_SIZE> {
         let kbd_6kro = HIDClass::new_ep_in_with_settings(
             alloc,
             KeyboardReport::desc(),
@@ -265,6 +285,8 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
             },
             kbd_consumer,
             kbd_updated: true,
+            kbd_led_producer,
+            kbd_led_state: 0,
             ctrl,
             ctrl_consumer,
             ctrl_report: SysCtrlConsumerCtrlReport {
@@ -645,6 +667,63 @@ impl<B: UsbBus, const KBD_SIZE: usize, const MOUSE_SIZE: usize, const CTRL_SIZE:
         Ok(())
     }
 
+    /// Query HID lock LED state
+    /// The state used depends on which protocol mode is selected
+    /// (there are different lock LEDs for the 6KRO/Boot and NKRO keyboard
+    /// descriptors.
+    pub fn pull(&mut self) {
+        let mut buf: [u8; 1] = [0];
+        let res = match self.get_kbd_protocol_mode() {
+            HidProtocolMode::Report => self.kbd_nkro.pull_raw_report(&mut buf),
+            HidProtocolMode::Boot => self.kbd_6kro.pull_raw_report(&mut buf),
+        };
+
+        match res {
+            Ok(info) => {
+                // Inferface / report_id
+                // 0 -> Boot
+                // 1 -> Report
+                // However, we are only keeping track of "events" so there's no
+                // risk of double countings. There's actually a risk of missing a report
+                // in some cases, so having two chances at it increases the chances
+                // of seeing the event (if there's a quick succession of SET_REPORTs
+                // before calling this function, the previous buffer will be lost).
+                trace!("set_report: {:?} {:?}", info, buf);
+
+                // Compare new state with previous
+                // Each bit represents an id of kll_hid::LedIndicator
+                let mut cur = buf[0];
+                let mut prev = self.kbd_led_state;
+                for id in 1..=5 {
+                    // Compare current vs. previous event bits
+                    if (cur & 0x1) != (prev & 0x1) {
+                        // Enqueue event
+                        if cur & 0x1 == 1 {
+                            self.kbd_led_producer
+                                .enqueue(LedState::Activate(id))
+                                .unwrap();
+                        } else {
+                            self.kbd_led_producer
+                                .enqueue(LedState::Deactivate(id))
+                                .unwrap();
+                        }
+                    }
+
+                    // Shift bits
+                    cur <<= 1;
+                    prev <<= 1;
+                }
+
+                // Update state for the next comparison
+                self.kbd_led_state = buf[0];
+            }
+            Err(UsbError::WouldBlock) => {}
+            Err(err) => {
+                error!("Bad SET_REPORT: {:?}", err);
+            }
+        }
+    }
+
     /// Poll the HID-IO interface
     #[cfg(feature = "hidio")]
     pub fn poll<
@@ -783,4 +862,22 @@ pub fn enqueue_mouse_event<const MOUSE_SIZE: usize>(
 ) -> Result<(), MouseState> {
     // TODO
     Err(MouseState::Unknown)
+}
+
+#[cfg(feature = "kll-core")]
+impl LedState {
+    pub fn trigger_event(&self) -> kll_core::TriggerEvent {
+        match self {
+            LedState::Activate(id) => kll_core::TriggerEvent::HidLed {
+                state: kll_core::trigger::Aodo::Activate,
+                index: *id,
+                last_state: 0,
+            },
+            LedState::Deactivate(id) => kll_core::TriggerEvent::HidLed {
+                state: kll_core::trigger::Aodo::Deactivate,
+                index: *id,
+                last_state: 0,
+            },
+        }
+    }
 }
