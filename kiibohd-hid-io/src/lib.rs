@@ -17,12 +17,19 @@ pub use hid_io_protocol::*;
 use kll_core::TriggerEvent;
 use pkg_version::*;
 
+#[cfg(feature = "defmt")]
+use defmt::trace;
+#[cfg(not(feature = "defmt"))]
+use log::trace;
+
 // ----- Sizes -----
 
 pub const MESSAGE_LEN: usize = 256;
 
 // ----- General Structs -----
 
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct HidIoHostInfo {
     pub major_version: u16,
     pub minor_version: u16,
@@ -34,6 +41,8 @@ pub struct HidIoHostInfo {
 
 // ----- Enums -----
 
+#[derive(Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum HidIoEvent {
     TriggerEvent(TriggerEvent),
 }
@@ -117,11 +126,13 @@ impl<
         loop {
             // Retrieve vec chunk
             if let Some(buf) = self.rx_bytebuf.dequeue() {
+                trace!("rx_packetbuffer_decode: {:?}", buf);
                 // Decode chunk
                 match self.rx_packetbuf.decode_packet(&buf) {
                     Ok(_recv) => {
                         // Only handle buffer if ready
                         if self.rx_packetbuf.done {
+                            trace!("rx_packetbuf: {:?}", self.rx_packetbuf);
                             // Handle sync packet type
                             match self.rx_packetbuf.ptype {
                                 HidIoPacketType::Sync => {
@@ -152,11 +163,19 @@ impl<
         let mut cur = 0;
         while (count == 0 || cur < count) && self.rx_packetbuffer_decode()? {
             // Process rx buffer
-            self.rx_message_handling(self.rx_packetbuf.clone())?;
+            let ret = self.rx_message_handling(self.rx_packetbuf.clone());
 
             // Clear buffer
             self.rx_packetbuf.clear();
             cur += 1;
+
+            // We need to clear the failed packet before returning the error
+            match ret {
+                Ok(_) => {}
+                Err(err) => {
+                    return Err(err);
+                }
+            }
         }
 
         Ok(cur)
@@ -176,6 +195,7 @@ impl<
     /// Process incoming events through HID-IO
     /// This is the preferred mechanism to interact with HID-IO (if possible for your situation)
     pub fn process_event(&mut self, event: HidIoEvent) -> Result<(), CommandError> {
+        trace!("process_event: {:?}", event);
         // TODO - Event handler
         match event {
             HidIoEvent::TriggerEvent(_event) => {}
@@ -208,6 +228,7 @@ impl<
 
     fn tx_packetbuffer_send(&mut self, buf: &mut HidIoPacketBuffer<H>) -> Result<(), CommandError> {
         let size = buf.serialized_len() as usize;
+        trace!("tx_packetbuffer_send: {:?} serialized_len({:?})", buf, size);
         if self.serial_buf.resize_default(size).is_err() {
             return Err(CommandError::SerializationVecTooSmall);
         }
@@ -222,7 +243,7 @@ impl<
         // May need to enqueue multiple packets depending how much
         // was serialized
         let data = &self.serial_buf;
-        for pos in (1..data.len()).step_by(N) {
+        for pos in (0..data.len()).step_by(N) {
             let len = core::cmp::min(N, data.len() - pos);
             match self
                 .tx_bytebuf
@@ -263,6 +284,7 @@ impl<
         let mut number = 0;
         let mut string = String::new();
 
+        trace!("h0001_info_cmd: {:?}", data);
         match property {
             Property::MajorVersion => {
                 number = pkg_version_major!();
@@ -349,6 +371,7 @@ impl<
     ) -> Result<(), CommandError> {
         use h0001::*;
 
+        trace!("h0001_info_ack: {:?}", data);
         match data.property {
             Property::MajorVersion => {
                 self.hostinfo.major_version = data.number;
