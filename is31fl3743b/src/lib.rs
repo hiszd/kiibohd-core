@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -20,7 +20,7 @@ pub const ISSI_PAGE_LEN: usize = 0xC6;
 /// Both the LED Scaling and PWM registers start from 0x01, not 0x00
 /// See Table 2 (pg 11): <https://www.lumissil.com/assets/pdf/core/IS31FL3743B_DS.pdf>
 const ISSI_PAGE_START: u8 = 0x01;
-const ISSI_OPEN_REG_LEN: usize = 0x21;
+const ISSI_OPEN_REG_LEN: usize = 0x20;
 const ISSI_OPEN_REG_START: u8 = 0x03;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, defmt::Format)]
@@ -87,10 +87,33 @@ const fn atsam4_cs_to_pcs(cs: u8) -> u8 {
     }
 }
 
+const fn atsam4_pcs_to_cs(pcs: u8) -> u8 {
+    if pcs & 0b0001 == 0 {
+        0
+    } else if pcs & 0b0010 == 0 {
+        1
+    } else if pcs & 0b0100 == 0 {
+        2
+    } else if pcs & 0b1000 == 0 {
+        3
+    } else {
+        0xFF // Forbidden
+    }
+}
+
 /// Builds a 32-bit PDC-Ready Variable Peripheral Selection SPI word for ATSAM4S
 /// Used to generate constant buffers easily
 const fn atsam4_var_spi(data: u8, cs: u8, lastxfer: bool) -> u32 {
     (data as u32) | ((atsam4_cs_to_pcs(cs) as u32) << 16) | (if lastxfer { 1 } else { 0 } << 24)
+}
+
+/// Converts a 32-bit PDC-Ready Variable Peripheral Selection SPI word to a tuple of data, cs, and lastxfer
+/// (data, cs, lastxfer)
+const fn atsam4_var_data(spi: u32) -> (u8, u8, bool) {
+    let data = spi & 0xFF;
+    let cs = atsam4_pcs_to_cs(((spi >> 16) & 0xF) as u8);
+    let lastxfer = (spi >> 24) & 1 == 1;
+    (data as u8, cs, lastxfer)
 }
 
 /// Copies the sync expression to the buffer and returns the new position
@@ -251,7 +274,8 @@ pub struct Is31fl3743bAtsam4Dma<const CHIPS: usize, const QUEUE_SIZE: usize> {
     last_rx_len: usize,
 }
 
-impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QUEUE_SIZE> {
+impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QUEUE_SIZE>
+{
     pub fn new(cs: [u8; CHIPS], initial_global_brightness: u8, enable: bool) -> Self {
         Self {
             initial_global_brightness,
@@ -279,13 +303,15 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     }
 
     /// Called to process DMA data buffer (after interrupt)
-    pub fn rx_function(&mut self, rx_buf: &[u32]) -> Result<(), IssiError> {
+    pub fn rx_function(&mut self, rx_buf: &[u32]) -> Result<(), IssiError>
+    {
         // Dequeue function as we're finished with it
         let func = if let Some(func) = self.func_queue.dequeue() {
             func
         } else {
             return Err(IssiError::FuncQueueEmpty);
         };
+        defmt::trace!("rx_function: {:?} - {:X}", func, rx_buf);
 
         match func {
             Function::Brightness => self.brightness_set_rx(rx_buf),
@@ -310,6 +336,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         } else {
             return Err(IssiError::FuncQueueEmpty);
         };
+        defmt::trace!("tx_function: {:?}", func);
 
         match func {
             Function::Brightness => self.brightness_set_tx(tx_buf),
@@ -328,6 +355,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     /// Triggers chip reset sequence
     pub fn reset(&mut self) -> Result<(), IssiError> {
         if self.func_queue.enqueue(Function::Reset).is_ok() {
+            defmt::trace!("reset");
             Ok(())
         } else {
             Err(IssiError::FuncQueueFull)
@@ -384,7 +412,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
         // Disable software shutdown (if LEDs are enabled)
         let pos = if self.enable {
-            atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x01)
+            atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x09)
         } else {
             pos
         };
@@ -398,6 +426,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
     pub fn scaling(&mut self) -> Result<(), IssiError> {
         if self.func_queue.enqueue(Function::Scaling).is_ok() {
+            defmt::trace!("scaling");
             Ok(())
         } else {
             Err(IssiError::FuncQueueFull)
@@ -441,6 +470,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
     pub fn pwm(&mut self) -> Result<(), IssiError> {
         if self.func_queue.enqueue(Function::Pwm).is_ok() {
+            defmt::trace!("pwm");
             Ok(())
         } else {
             Err(IssiError::FuncQueueFull)
@@ -511,6 +541,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
     fn software_shutdown(&mut self) -> Result<(), IssiError> {
         if self.func_queue.enqueue(Function::SoftwareShutdown).is_ok() {
+            defmt::trace!("software_shutdown: {:?}", self.enable);
             Ok(())
         } else {
             Err(IssiError::FuncQueueFull)
@@ -524,10 +555,10 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     fn software_shutdown_tx(&mut self, tx_buf: &mut [u32]) -> Result<(usize, usize), IssiError> {
         let pos = if self.enable {
             // Disable software shutdown
-            atsam4_reg_sync!(tx_buf, 0, &self.cs, ISSI_CONFIG_PAGE, 0x00, 0x01)
+            atsam4_reg_sync!(tx_buf, 0, &self.cs, ISSI_CONFIG_PAGE, 0x00, 0x09)
         } else {
             // Enable software shutdown
-            atsam4_reg_sync!(tx_buf, 0, &self.cs, ISSI_CONFIG_PAGE, 0x00, 0x00)
+            atsam4_reg_sync!(tx_buf, 0, &self.cs, ISSI_CONFIG_PAGE, 0x00, 0x08)
         };
         self.last_rx_len = 0;
         Ok((0, pos))
@@ -563,6 +594,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     pub fn brightness_set(&mut self, val: u8) -> Result<u8, IssiError> {
         self.current_global_brightness = val;
         if self.func_queue.enqueue(Function::Brightness).is_ok() {
+            defmt::trace!("brightness_set: {:?}", self.current_global_brightness);
             Ok(val)
         } else {
             Err(IssiError::FuncQueueFull)
@@ -597,13 +629,37 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         self.current_global_brightness
     }
 
-    /// Open Circuit Detect
-    pub fn open_circuit_detect(&mut self) -> Result<(), IssiError> {
+    /// Open Circuit Detect Setup
+    /// Configures registers and does an open circuit detect
+    /// Must wait at least 750 us after the registers are set before reading
+    pub fn open_circuit_detect_setup(&mut self) -> Result<(), IssiError> {
         if self
             .func_queue
             .enqueue(Function::OpenCircuitDetectSetup)
             .is_ok()
         {
+            defmt::trace!("open_circuit_detect_setup");
+            Ok(())
+        } else {
+            Err(IssiError::FuncQueueFull)
+        }
+    }
+
+    /// Open Circuit Detect Read
+    /// Reads the open circuit detect registers into memory.
+    ///
+    /// Use open_circuit_lookup() or open_circuit_raw() to read the values.
+    /// Must wait at least 750 us after configuring the registers before reading
+    pub fn open_circuit_detect_read(&mut self) -> Result<(), IssiError> {
+        // Clear open data
+        self.open_detect_ready = false;
+        if self
+            .func_queue
+            .enqueue(Function::OpenCircuitDetectRead)
+            .is_ok()
+            || self.func_queue.enqueue(Function::Reset).is_err()
+        {
+            defmt::trace!("open_circuit_detect_read");
             Ok(())
         } else {
             Err(IssiError::FuncQueueFull)
@@ -611,19 +667,8 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     }
 
     fn open_circuit_detect_setup_rx(&mut self, _rx_buf: &[u32]) -> Result<(), IssiError> {
-        // TODO Add delay here
-        // NOTE: We must wait for at least 750 us before reading
-
-        // Queue up read and reset
-        if self
-            .func_queue
-            .enqueue(Function::OpenCircuitDetectRead)
-            .is_err()
-            || self.func_queue.enqueue(Function::Reset).is_err()
-        {
-            return Err(IssiError::FuncQueueFull);
-        }
-
+        defmt::trace!("open_circuit_detect_setup_rx");
+        // Nothing to do
         Ok(())
     }
 
@@ -631,6 +676,9 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         &mut self,
         tx_buf: &mut [u32],
     ) -> Result<(usize, usize), IssiError> {
+        // Set scaling and pwm to max
+        self.scale_pwm_max()?;
+
         let chips = &self.cs;
         let pos = 0;
 
@@ -641,18 +689,25 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x02, 0x00);
 
         // Set OSD to open detection
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x03);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x0B);
 
+        defmt::trace!("open_circuit_detect_setup_tx: {:?} - {:X}", pos, tx_buf);
         self.last_rx_len = 0;
         Ok((0, pos))
     }
 
     fn open_circuit_detect_read_rx(&mut self, rx_buf: &[u32]) -> Result<(), IssiError> {
-        for chip in 0..CHIPS {
-            for (pos, word) in rx_buf[..self.last_rx_len].iter().enumerate() {
-                self.open_detect[chip][pos] = (word & 0xFF) as u8;
+        for (pos, word) in rx_buf[..self.last_rx_len].iter().enumerate() {
+            let chip = pos / (ISSI_OPEN_REG_LEN + 2);
+            let pos = pos - chip * (ISSI_OPEN_REG_LEN + 2);
+            let (data, _, _) = atsam4_var_data(*word);
+            // First three bytes for each chip are ignored (spi read setup)
+            if pos >= 2 {
+               self.open_detect[chip][pos - 2] = data;
             }
         }
+        defmt::trace!("Open detect: {:X}", self.open_detect);
+        self.open_detect_ready = true;
         Ok(())
     }
 
@@ -667,14 +722,16 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
             tx_buf[pos] = atsam4_var_spi(ISSI_CONFIG_PAGE | 0x80, cs, false);
             pos += 1;
 
-            // First register (always 0x03)
+            // Setup first register to read
             tx_buf[pos] = atsam4_var_spi(ISSI_OPEN_REG_START, cs, false);
             pos += 1;
 
-            // Handle CS for the blank bytes
-            for i in 0..ISSI_OPEN_REG_LEN - 1 {
+            // Send 0x00, chip will auto-increment which register to read from next
+            for i in 0..ISSI_OPEN_REG_LEN - 2 {
+                //let reg = ISSI_OPEN_REG_START + i as u8;
                 tx_buf[pos + i] = atsam4_var_spi(0x00, cs, false);
             }
+            pos += ISSI_OPEN_REG_LEN - 2;
 
             // Set lastxfer on final read byte
             tx_buf[pos] = atsam4_var_spi(0x00, cs, true);
@@ -686,13 +743,37 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         Ok((pos, pos))
     }
 
-    /// Short Circuit Detect
-    pub fn short_circuit_detect(&mut self) -> Result<(), IssiError> {
+    /// Short Circuit Detect Setup
+    /// Configures registers and does a short circuit detect
+    /// Must wait at least 750 us after the registers are set before reading
+    pub fn short_circuit_detect_setup(&mut self) -> Result<(), IssiError> {
         if self
             .func_queue
             .enqueue(Function::ShortCircuitDetectSetup)
             .is_ok()
         {
+            defmt::trace!("short_circuit_detect_setup");
+            Ok(())
+        } else {
+            Err(IssiError::FuncQueueFull)
+        }
+    }
+
+    /// Short Circuit Detect Read
+    /// Reads the short circuit detect registers into memory.
+    ///
+    /// Use short_circuit_lookup() or short_circuit_raw() to read the values.
+    /// Must wait at least 750 us after configuring the registers before reading
+    pub fn short_circuit_detect_read(&mut self) -> Result<(), IssiError> {
+        // Clear short data
+        self.short_detect_ready = false;
+        if self
+            .func_queue
+            .enqueue(Function::ShortCircuitDetectRead)
+            .is_ok()
+            || self.func_queue.enqueue(Function::Reset).is_err()
+        {
+            defmt::trace!("short_circuit_detect_read");
             Ok(())
         } else {
             Err(IssiError::FuncQueueFull)
@@ -700,19 +781,8 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     }
 
     fn short_circuit_detect_setup_rx(&mut self, _rx_buf: &[u32]) -> Result<(), IssiError> {
-        // TODO Add delay here
-        // NOTE: We must wait for at least 750 us before reading
-
-        // Queue up read and reset
-        if self
-            .func_queue
-            .enqueue(Function::ShortCircuitDetectRead)
-            .is_err()
-            || self.func_queue.enqueue(Function::Reset).is_err()
-        {
-            return Err(IssiError::FuncQueueFull);
-        }
-
+        defmt::trace!("short_circuit_detect_setup_rx");
+        // Nothing to do
         Ok(())
     }
 
@@ -720,6 +790,9 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         &mut self,
         tx_buf: &mut [u32],
     ) -> Result<(usize, usize), IssiError> {
+        // Set scaling and pwm to max
+        self.scale_pwm_max()?;
+
         let chips = &self.cs;
         let pos = 0;
 
@@ -727,25 +800,31 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x01, 0x0F);
 
         // Set pull down resistors
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x02, 0x30);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x02, 0x00);
 
         // Set OSD to short detection
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x05);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x0D);
 
         self.last_rx_len = 0;
         Ok((0, pos))
     }
 
     fn short_circuit_detect_read_rx(&mut self, rx_buf: &[u32]) -> Result<(), IssiError> {
-        for chip in 0..CHIPS {
-            for (pos, word) in rx_buf[..self.last_rx_len].iter().enumerate() {
-                self.short_detect[chip][pos] = (word & 0xFF) as u8;
+        for (pos, word) in rx_buf[..self.last_rx_len].iter().enumerate() {
+            let chip = pos / (ISSI_OPEN_REG_LEN + 2);
+            let pos = pos - chip * (ISSI_OPEN_REG_LEN + 2);
+            let (data, _, _) = atsam4_var_data(*word);
+            // First three bytes for each chip are ignored (spi read setup)
+            if pos >= 2 {
+                self.short_detect[chip][pos - 2] = data;
             }
         }
+        defmt::trace!("Short detect: {:X}", self.short_detect);
+        self.short_detect_ready = true;
         Ok(())
     }
 
-    /// Can used to find open circuit channel positions after calling open_detect()
+    /// Can be used to find open circuit channel positions after calling open_detect()
     pub fn open_circuit_lookup(&self, chip: usize, ch: usize) -> Result<bool, IssiError> {
         if self.open_detect_ready {
             Ok((self.open_detect[chip][ch / 8] >> (ch % 8)) & 0x01 == 0x01)
@@ -754,11 +833,46 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         }
     }
 
+    /// Raw data lookup for open circuit detections
+    pub fn open_circuit_raw(&self) -> Result<[[u8; ISSI_OPEN_REG_LEN]; CHIPS], IssiError> {
+        if self.open_detect_ready {
+            Ok(self.open_detect)
+        } else {
+            Err(IssiError::OpenDetectNotReady)
+        }
+    }
+
+    /// Can be used to find short circuit channel positions after calling short_detect()
     pub fn short_circuit_lookup(&self, chip: usize, ch: usize) -> Result<bool, IssiError> {
         if self.short_detect_ready {
             Ok((self.short_detect[chip][ch / 8] >> (ch % 8)) & 0x01 == 0x01)
         } else {
             Err(IssiError::ShortDetectNotReady)
         }
+    }
+
+    /// Raw data lookup for short circuit detections
+    pub fn short_circuit_raw(&self) -> Result<[[u8; ISSI_OPEN_REG_LEN]; CHIPS], IssiError> {
+        if self.short_detect_ready {
+            Ok(self.short_detect)
+        } else {
+            Err(IssiError::ShortDetectNotReady)
+        }
+    }
+
+    /// Set scaling and pwm registers to 0xFF for all channels
+    /// This is used by the open and short detection features
+    fn scale_pwm_max(&mut self) -> Result<(), IssiError> {
+        for chip in 0..CHIPS {
+            for ch in ISSI_PAGE_START as usize..ISSI_PAGE_LEN as usize{
+                self.page_buf.scaling[chip][ch] = 0xFF;
+                self.page_buf.pwm[chip][ch] = 0xFF;
+            }
+        }
+        // Enqueue scaling and pwm updates
+        self.pwm()?;
+        self.scaling()?;
+
+        Ok(())
     }
 }

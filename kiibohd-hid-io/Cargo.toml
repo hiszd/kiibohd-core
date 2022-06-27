@@ -14,7 +14,7 @@ edition = "2021"
 
 [dependencies]
 defmt           = { version = "0.3", optional = true }
-heapless        = { version = "^0.7.10" }
+heapless        = { version = "0.7.14" }
 hid-io-protocol = { version = "0.1", default-features = false, features = ["device"] }
 kll-core        = { version = "0.1", path = "../kll-core" }
 log             = { version = "0.4", default-features = false }

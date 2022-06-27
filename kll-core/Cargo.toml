@@ -18,9 +18,8 @@ defmt = ["dep:defmt", "heapless/defmt-impl", "kll-hid/defmt"]
 [dependencies]
 byteorder             = { version = "1.3", default-features = false }
 defmt                 = { version = "0.3", optional = true }
-embedded-time         = "0.12"
 enum-primitive-derive = "0.2.2"
-heapless              = "^0.7.10"
+heapless              = "0.7.14"
 kll-hid               = { version = "0.1", path = "../kll-hid" }
 kll-macros            = { version = "0.1", path = "../kll-macros" }
 log                   = { version = "^0.4", default-features = false }

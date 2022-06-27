@@ -724,9 +724,9 @@ impl<
         }
     }
 
-    /// Poll the HID-IO interface
+    /// Pull the HID-IO interface (RX)
     #[cfg(feature = "hidio")]
-    pub fn poll<
+    pub fn pull_hidio<
         KINTF: KiibohdCommandInterface<H>,
         const TX: usize,
         const RX: usize,
@@ -766,7 +766,22 @@ impl<
         if let Err(e) = interface.process_rx(0) {
             warn!("process_rx failed -> {:?}", e);
         }
+    }
 
+    /// Push the HID-IO interface (TX)
+    #[cfg(feature = "hidio")]
+    pub fn push_hidio<
+        KINTF: KiibohdCommandInterface<H>,
+        const TX: usize,
+        const RX: usize,
+        const N: usize,
+        const H: usize,
+        const S: usize,
+        const ID: usize,
+    >(
+        &mut self,
+        interface: &mut CommandInterface<KINTF, TX, RX, N, H, S, ID>,
+    ) {
         // Push as many packets as possible
         while !interface.tx_bytebuf.is_empty() {
             // Don't dequeue yet, we might not be able to send

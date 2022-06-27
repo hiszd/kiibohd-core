@@ -120,6 +120,20 @@ impl<
         &self.hostinfo
     }
 
+    /// Reference to the customized interface
+    /// The interface will likely have custom datastructures
+    /// that you want access to (e.g. manufacturing toggles)
+    pub fn interface(&self) -> &KINTF {
+        &self.interface
+    }
+
+    /// Mut reference to the customized interface
+    /// The interface will likely have custom datastructures
+    /// that you want access to (e.g. manufacturing toggles)
+    pub fn mut_interface(&mut self) -> &mut KINTF {
+        &mut self.interface
+    }
+
     /// Decode rx_bytebuf into a HidIoPacketBuffer
     /// Returns true if buffer ready, false if not
     pub fn rx_packetbuffer_decode(&mut self) -> Result<bool, CommandError> {

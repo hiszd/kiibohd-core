@@ -58,11 +58,11 @@ pub enum SensorError {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SenseAnalysis {
-    raw: u16,          // Raw ADC reading
-    distance: i16,     // Distance value (lookup + min/max alignment)
-    velocity: i16,     // Velocity calculation (*)
-    acceleration: i16, // Acceleration calculation (*)
-    jerk: i16,         // Jerk calculation (*)
+    pub raw: u16,          // Raw ADC reading
+    pub distance: i16,     // Distance value (lookup + min/max alignment)
+    pub velocity: i16,     // Velocity calculation (*)
+    pub acceleration: i16, // Acceleration calculation (*)
+    pub jerk: i16,         // Jerk calculation (*)
 }
 
 impl SenseAnalysis {
