@@ -233,7 +233,7 @@ impl<
         const H: usize,
         const S: usize,
         const ID: usize,
-    > Commands<H, { MESSAGE_LEN - 1 }, { MESSAGE_LEN - 4 }, ID>
+    > Commands<H, { MESSAGE_LEN - 1 }, { MESSAGE_LEN - 2 }, { MESSAGE_LEN - 4 }, ID>
     for CommandInterface<KINTF, TX, RX, N, H, S, ID>
 {
     fn default_packet_chunk(&self) -> u32 {
