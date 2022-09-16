@@ -425,6 +425,17 @@ impl<
         self.interface.h001a_sleepmode_cmd(data)
     }
 
+    fn h0021_pixelsetting_cmd(&mut self, data: h0021::Cmd) -> Result<h0021::Ack, h0021::Nak> {
+        self.interface.h0021_pixelsetting_cmd(data)
+    }
+
+    fn h0026_directset_cmd(
+        &mut self,
+        data: h0026::Cmd<{ MESSAGE_LEN - 2 }>,
+    ) -> Result<h0026::Ack, h0026::Nak> {
+        self.interface.h0026_directset_cmd(data)
+    }
+
     fn h0031_terminalcmd_cmd(&mut self, data: h0031::Cmd<H>) -> Result<h0031::Ack, h0031::Nak> {
         if self.interface.h0031_terminalinput(data) {
             Ok(h0031::Ack {})
@@ -519,6 +530,20 @@ pub trait KiibohdCommandInterface<const H: usize> {
         Err(h001a::Nak {
             error: h001a::Error::NotSupported,
         })
+    }
+
+    /// General Pixel/LED settings for HID-IO
+    fn h0021_pixelsetting_cmd(&mut self, _data: h0021::Cmd) -> Result<h0021::Ack, h0021::Nak> {
+        Err(h0021::Nak {})
+    }
+
+    /// Raw pixel/LED data setting
+    /// This is device/configuration specific, but is also the most efficient way to set pixels/LEDs.
+    fn h0026_directset_cmd(
+        &mut self,
+        _data: h0026::Cmd<{ MESSAGE_LEN - 2 }>,
+    ) -> Result<h0026::Ack, h0026::Nak> {
+        Err(h0026::Nak {})
     }
 
     /// Logging callback
