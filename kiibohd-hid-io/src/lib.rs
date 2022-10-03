@@ -429,11 +429,30 @@ impl<
         self.interface.h0021_pixelsetting_cmd(data)
     }
 
+    fn h0021_pixelsetting_nacmd(&mut self, data: h0021::Cmd) -> Result<(), CommandError> {
+        if self.interface.h0021_pixelsetting_cmd(data).is_ok() {
+            Ok(())
+        } else {
+            Err(CommandError::CallbackFailed)
+        }
+    }
+
     fn h0026_directset_cmd(
         &mut self,
         data: h0026::Cmd<{ MESSAGE_LEN - 2 }>,
     ) -> Result<h0026::Ack, h0026::Nak> {
         self.interface.h0026_directset_cmd(data)
+    }
+
+    fn h0026_directset_nacmd(
+        &mut self,
+        data: h0026::Cmd<{ MESSAGE_LEN - 2 }>,
+    ) -> Result<(), CommandError> {
+        if self.interface.h0026_directset_cmd(data).is_ok() {
+            Ok(())
+        } else {
+            Err(CommandError::CallbackFailed)
+        }
     }
 
     fn h0031_terminalcmd_cmd(&mut self, data: h0031::Cmd<H>) -> Result<h0031::Ack, h0031::Nak> {
