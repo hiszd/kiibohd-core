@@ -104,7 +104,7 @@ const fn atsam4_pcs_to_cs(pcs: u8) -> u8 {
 /// Builds a 32-bit PDC-Ready Variable Peripheral Selection SPI word for ATSAM4S
 /// Used to generate constant buffers easily
 const fn atsam4_var_spi(data: u8, cs: u8, lastxfer: bool) -> u32 {
-    (data as u32) | ((atsam4_cs_to_pcs(cs) as u32) << 16) | (if lastxfer { 1 } else { 0 } << 24)
+    (data as u32) | ((atsam4_cs_to_pcs(cs) as u32) << 16) | ((lastxfer as u32) << 24)
 }
 
 /// Converts a 32-bit PDC-Ready Variable Peripheral Selection SPI word to a tuple of data, cs, and lastxfer
