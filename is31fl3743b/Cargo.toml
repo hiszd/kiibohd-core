@@ -10,5 +10,7 @@ keywords = ["no-std", "embedded", "hardware-support"]
 categories = ["embedded", "no-std"]
 
 [dependencies]
-defmt = "0.3"
-heapless = { version = "0.7.14", features = ["defmt-impl"] }
+defmt        = "0.3"
+embedded-hal = "0.2.7"
+heapless     = { version = "0.7.14", features = ["defmt-impl"] }
+nb           = "1.0.0"

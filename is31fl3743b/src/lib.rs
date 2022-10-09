@@ -9,11 +9,20 @@
 
 #![no_std]
 
+use embedded_hal::spi;
 use heapless::spsc::Queue;
 
-const ISSI_CONFIG_PAGE: u8 = 0x52;
-const ISSI_SCALE_PAGE: u8 = 0x51;
-const ISSI_PWM_PAGE: u8 = 0x50;
+/// Register page /w Chip ID (0x50) already set
+/// See Table 2 (pg 11): <https://www.lumissil.com/assets/pdf/core/IS31FL3743B_DS.pdf>
+#[derive(Clone, Copy, Debug, PartialEq, Eq, defmt::Format)]
+#[repr(u8)]
+pub enum Page {
+    Pwm = 0x50,
+    Scaling = 0x51,
+    Config = 0x52,
+}
+
+const ISSI_SPI_READ_BIT: u8 = 0x80;
 /// Both the LED Scaling and PWM register pages have the same length
 /// See Table 2 (pg 11): <https://www.lumissil.com/assets/pdf/core/IS31FL3743B_DS.pdf>
 pub const ISSI_PAGE_LEN: usize = 0xC6;
@@ -31,6 +40,7 @@ pub enum IssiError {
     FuncQueueFull,
     ShortDetectNotReady,
     UnhandledFunction(Function),
+    SpiError,
 }
 
 pub struct IssiBuf<const CHIPS: usize> {
@@ -274,8 +284,7 @@ pub struct Is31fl3743bAtsam4Dma<const CHIPS: usize, const QUEUE_SIZE: usize> {
     last_rx_len: usize,
 }
 
-impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QUEUE_SIZE>
-{
+impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QUEUE_SIZE> {
     pub fn new(cs: [u8; CHIPS], initial_global_brightness: u8, enable: bool) -> Self {
         Self {
             initial_global_brightness,
@@ -303,8 +312,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     }
 
     /// Called to process DMA data buffer (after interrupt)
-    pub fn rx_function(&mut self, rx_buf: &[u32]) -> Result<(), IssiError>
-    {
+    pub fn rx_function(&mut self, rx_buf: &[u32]) -> Result<(), IssiError> {
         // Dequeue function as we're finished with it
         let func = if let Some(func) = self.func_queue.dequeue() {
             func
@@ -374,7 +382,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
         // Clear LED pages
         // Call reset to clear all register (on all chips)
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x2F, 0xAE);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x2F, 0xAE);
 
         // Reset the global brightness
         self.current_global_brightness = self.initial_global_brightness;
@@ -382,23 +390,30 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
             tx_buf,
             pos,
             chips,
-            ISSI_CONFIG_PAGE,
+            Page::Config as u8,
             0x01,
             self.current_global_brightness
         );
 
         // Enable pull-up and pull-down anti-ghosting registers
         // TODO: Make configurable
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x02, 0x33);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x02, 0x33);
 
         // Set temperature roll-off
         // TODO: Make configurable
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x24, 0x00);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x24, 0x00);
 
         // Follower/slave sync
         // TODO: Make spread specture configurable
         let pos = if chips.len() > 1 {
-            atsam4_reg_sync!(tx_buf, pos, chips_except_last, ISSI_CONFIG_PAGE, 0x25, 0x80)
+            atsam4_reg_sync!(
+                tx_buf,
+                pos,
+                chips_except_last,
+                Page::Config as u8,
+                0x25,
+                0x80
+            )
         } else {
             pos
         };
@@ -408,11 +423,11 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         // This is imporant as it may take more time to send the packet than the ISSI chip can handle
         // between frames.
         // TODO: Make spread specture configurable
-        let pos = atsam4_reg_sync!(tx_buf, pos, last, ISSI_CONFIG_PAGE, 0x25, 0xC0);
+        let pos = atsam4_reg_sync!(tx_buf, pos, last, Page::Config as u8, 0x25, 0xC0);
 
         // Disable software shutdown (if LEDs are enabled)
         let pos = if self.enable {
-            atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x09)
+            atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x09)
         } else {
             pos
         };
@@ -445,7 +460,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
             let cs = self.cs[chip];
 
             // Setup scaling page
-            tx_buf[pos] = atsam4_var_spi(ISSI_SCALE_PAGE, cs, false);
+            tx_buf[pos] = atsam4_var_spi(Page::Scaling as u8, cs, false);
             pos += 1;
 
             // First register (always 0x01)
@@ -489,7 +504,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
             let cs = self.cs[chip];
 
             // Setup pwm page
-            tx_buf[pos] = atsam4_var_spi(ISSI_PWM_PAGE, cs, false);
+            tx_buf[pos] = atsam4_var_spi(Page::Pwm as u8, cs, false);
             pos += 1;
 
             // First register (always 0x01)
@@ -555,10 +570,10 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     fn software_shutdown_tx(&mut self, tx_buf: &mut [u32]) -> Result<(usize, usize), IssiError> {
         let pos = if self.enable {
             // Disable software shutdown
-            atsam4_reg_sync!(tx_buf, 0, &self.cs, ISSI_CONFIG_PAGE, 0x00, 0x09)
+            atsam4_reg_sync!(tx_buf, 0, &self.cs, Page::Config as u8, 0x00, 0x09)
         } else {
             // Enable software shutdown
-            atsam4_reg_sync!(tx_buf, 0, &self.cs, ISSI_CONFIG_PAGE, 0x00, 0x08)
+            atsam4_reg_sync!(tx_buf, 0, &self.cs, Page::Config as u8, 0x00, 0x08)
         };
         self.last_rx_len = 0;
         Ok((0, pos))
@@ -610,7 +625,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
             tx_buf,
             0,
             &self.cs,
-            ISSI_CONFIG_PAGE,
+            Page::Config as u8,
             0x01,
             self.current_global_brightness
         );
@@ -683,13 +698,13 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         let pos = 0;
 
         // Set Global Current Control (needed for accurate readings)
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x01, 0x0F);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x01, 0x0F);
 
         // Disable pull resistors
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x02, 0x00);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x02, 0x00);
 
         // Set OSD to open detection
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x0B);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x0B);
 
         defmt::trace!("open_circuit_detect_setup_tx: {:?} - {:X}", pos, tx_buf);
         self.last_rx_len = 0;
@@ -703,7 +718,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
             let (data, _, _) = atsam4_var_data(*word);
             // First three bytes for each chip are ignored (spi read setup)
             if pos >= 2 {
-               self.open_detect[chip][pos - 2] = data;
+                self.open_detect[chip][pos - 2] = data;
             }
         }
         defmt::trace!("Open detect: {:X}", self.open_detect);
@@ -719,7 +734,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         let mut pos = 0;
         for cs in self.cs {
             // Setup config page in read mode
-            tx_buf[pos] = atsam4_var_spi(ISSI_CONFIG_PAGE | 0x80, cs, false);
+            tx_buf[pos] = atsam4_var_spi(Page::Config as u8 | ISSI_SPI_READ_BIT, cs, false);
             pos += 1;
 
             // Setup first register to read
@@ -797,13 +812,13 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         let pos = 0;
 
         // Set Global Current Control (needed for accurate readings)
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x01, 0x0F);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x01, 0x0F);
 
         // Set pull down resistors
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x02, 0x00);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x02, 0x00);
 
         // Set OSD to short detection
-        let pos = atsam4_reg_sync!(tx_buf, pos, chips, ISSI_CONFIG_PAGE, 0x00, 0x0D);
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x0D);
 
         self.last_rx_len = 0;
         Ok((0, pos))
@@ -864,7 +879,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     /// This is used by the open and short detection features
     fn scale_pwm_max(&mut self) -> Result<(), IssiError> {
         for chip in 0..CHIPS {
-            for ch in ISSI_PAGE_START as usize..ISSI_PAGE_LEN as usize{
+            for ch in ISSI_PAGE_START as usize..ISSI_PAGE_LEN as usize {
                 self.page_buf.scaling[chip][ch] = 0xFF;
                 self.page_buf.pwm[chip][ch] = 0xFF;
             }
@@ -874,5 +889,369 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         self.scaling()?;
 
         Ok(())
+    }
+}
+
+/// Non-optimized single chip driver
+/// Very basic, must handle each chip separately at a higher level
+///
+/// ```ignore
+/// use is31fl3743b::Is31fl3743b;
+///
+///
+/// fn test() {
+///     // ... Continued ...
+///
+///     let wdrbt = false; // Wait data read before transfer enabled
+///     let llb = false; // Local loopback
+///                  // Cycles to delay between consecutive transfers
+///     let dlybct = 0; // No delay
+///     let mut spi = SpiMaster::<SpiU8>::new(
+///         cx.device.SPI,
+///         clocks.peripheral_clocks.spi.into_enabled_clock(),
+///         pins.spi_miso,
+///         pins.spi_mosi,
+///         pins.spi_sck,
+///         atsam4_hal::spi::PeripheralSelectMode::Variable,
+///         wdrbt,
+///         llb,
+///         dlybct,
+///     );
+///
+///     // Setup each CS channel
+///     let mode = atsam4_hal::spi::spi::MODE_3;
+///     let csa = atsam4_hal::spi::ChipSelectActive::ActiveAfterTransfer;
+///     let bits = atsam4_hal::spi::BitWidth::Width8Bit;
+///     let baud = atsam4_hal::spi::Hertz(12_000_000_u32);
+///     // Cycles to delay from CS to first valid SPCK
+///     let dlybs = 0; // Half an SPCK clock period
+///     let cs_settings =
+///     atsam4_hal::spi::ChipSelectSettings::new(mode, csa, bits, baud, dlybs, dlybct);
+///     for i in 0..ISSI_DRIVER_CHIPS {
+///         spi.cs_setup(i, cs_settings.clone()).unwrap();
+///     }
+///
+///     // Setup ISSI LED Driver
+///     let issi_default_brightness = 255; // TODO compile-time configuration + flash default
+///     let issi_default_enable = true; // TODO compile-time configuration + flash default
+///     let mut issi = Is31fl3743bAtsam4Dma::new(
+///         issi_default_brightness,
+///         issi_default_enable,
+///     );
+///
+///     // Start ISSI LED Driver initialization
+///     issi.reset().unwrap();
+///     issi.pwm(spi, 0x01, [0xFF, 0xFF, 0xFF]).unwrap();
+///     issi.scaling(spi, 0x01, [0xFF, 0xFF, 0xFF]).unwrap();
+///
+///     // ... Continued ...
+/// }
+///
+/// // SPI Interrupt
+/// #[task(binds = SPI, priority = 12, shared = [issi, spi, spi_rxtx])]
+/// fn spi(mut cx: spi::Context) {
+///     let mut issi = cx.shared.issi;
+///     let mut spi_rxtx = cx.shared.spi_rxtx;
+///
+///     spi_rxtx.lock(|spi_rxtx| {
+///         // Retrieve DMA buffer
+///         if let Some(spi_buf) = spi_rxtx.take() {
+///             let ((rx_buf, tx_buf), spi) = spi_buf.wait();
+///
+///             issi.lock(|issi| {
+///                 // Process Rx buffer if applicable
+///                 issi.rx_function(rx_buf).unwrap();
+///
+///                 // Prepare the next DMA transaction
+///                 if let Ok((rx_len, tx_len)) = issi.tx_function(tx_buf) {
+///                     spi_rxtx.replace(spi.read_write_len(rx_buf, rx_len, tx_buf, tx_len));
+///                 } else {
+///                     // Disable PDC
+///                     let mut spi = spi.revert();
+///                     spi.disable_txbufe_interrupt();
+///
+///                     // No more transactions ready, park spi peripheral and buffers
+///                     cx.shared.spi.lock(|spi_periph| {
+///                         spi_periph.replace((spi, rx_buf, tx_buf));
+///                     });
+///                 }
+///             });
+///         }
+///     });
+/// }
+/// ```
+pub struct Is31fl3743b {
+    /// Default LED brightness, used during initialization
+    initial_global_brightness: u8,
+    /// Chip enable flag (used to power down the chips; often used for powersaving)
+    enable: bool,
+}
+
+impl Is31fl3743b {
+    pub fn new(initial_global_brightness: u8, enable: bool) -> Self {
+        Is31fl3743b {
+            initial_global_brightness,
+            enable,
+        }
+    }
+
+    /// Initializes/Resets state of ISSI chip
+    pub fn reset<SPIM>(&self, spi: &mut SPIM, follower: bool) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Clear LED pages
+        // Call reset to clear all register (on all chips)
+        self.write_reg(spi, Page::Config, 0x2F, 0xAE)?;
+
+        // Reset the global brightness
+        self.write_reg(spi, Page::Config, 0x01, self.initial_global_brightness)?;
+
+        // Enable pull-up and pull-down anti-ghosting registers
+        // TODO: Make configurable
+        self.write_reg(spi, Page::Config, 0x02, 0x33)?;
+
+        // Set temperature roll-off
+        // TODO: Make configurable
+        self.write_reg(spi, Page::Config, 0x24, 0x00)?;
+
+        if follower {
+            // Follower/slave sync
+            // TODO: Make spread specture configurable
+            self.write_reg(spi, Page::Config, 0x25, 0x80)?;
+        } else {
+            // Setup ISSI sync and spread spectrum function
+            // XXX (HaaTa); The last chip is used as it is the last chip all of the frame data is sent to
+            // This is imporant as it may take more time to send the packet than the ISSI chip can handle
+            // between frames.
+            // TODO: Make spread specture configurable
+            self.write_reg(spi, Page::Config, 0x25, 0xC0)?;
+        }
+
+        // Disable software shutdown (if LEDs are enabled)
+        if self.enable {
+            self.write_reg(spi, Page::Config, 0x00, 0x09)?;
+        }
+
+        Ok(())
+    }
+
+    /// Write ISSI register through SPI master interface
+    fn write_reg<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        page: Page,
+        addr: u8,
+        val: u8,
+    ) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Write Page
+        self.spi_send(spi, page as u8)?;
+
+        // Write Address Reg
+        self.spi_send(spi, addr)?;
+
+        // Write Value
+        self.spi_send(spi, val)
+    }
+
+    /// Write ISSI register through SPI master interface using a buffer
+    /// (more efficient than setting up each register due to auto-increment).
+    fn write_buffer<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        page: Page,
+        start_addr: u8,
+        buf: &[u8],
+    ) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Write Page
+        self.spi_send(spi, page as u8)?;
+
+        // Write Address Reg
+        self.spi_send(spi, start_addr)?;
+
+        // Write buffer
+        for byte in buf {
+            self.spi_send(spi, *byte)?;
+        }
+        Ok(())
+    }
+
+    /*
+    /// Read ISSI register through SPI master interface
+    fn read_reg<SPIM>(&self, spi: &mut SPIM, page: Page, addr: u8) -> Result<u8, IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Write Page
+        self.spi_send(spi, page as u8 | ISSI_SPI_READ_BIT)?;
+
+        // Write Address Reg
+        self.spi_send(spi, addr)?;
+
+        // Read
+        self.spi_read(spi)
+    }
+    */
+
+    /// Read ISSI register through SPI master interface
+    /// (more efficient than setting up each register due to auto-increment).
+    fn read_buffer<const LEN: usize, SPIM>(
+        &self,
+        spi: &mut SPIM,
+        page: Page,
+        start_addr: u8,
+    ) -> Result<[u8; LEN], IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Write Page
+        self.spi_send(spi, page as u8 | ISSI_SPI_READ_BIT)?;
+
+        // Write Address Reg
+        self.spi_send(spi, start_addr)?;
+
+        // Read into buffer
+        let mut buf: [u8; LEN] = [0; LEN];
+        for val in buf.iter_mut().take(LEN) {
+            *val = self.spi_read(spi)?;
+        }
+        Ok(buf)
+    }
+
+    /// Simplifies SPI master writes for this driver
+    fn spi_send<SPIM>(&self, spi: &mut SPIM, val: u8) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        while let Err(e) = spi.send(val as u8) {
+            match e {
+                nb::Error::WouldBlock => {
+                    continue;
+                }
+                _ => {
+                    return Err(IssiError::SpiError);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Simplifies SPI master reads for this driver
+    fn spi_read<SPIM>(&self, spi: &mut SPIM) -> Result<u8, IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        loop {
+            match spi.read() {
+                Ok(val) => {
+                    return Ok(val);
+                }
+                Err(nb::Error::WouldBlock) => {
+                    continue;
+                }
+                Err(_) => {
+                    return Err(IssiError::SpiError);
+                }
+            }
+        }
+    }
+
+    /// Write to PWM registers
+    pub fn pwm<SPIM>(&self, spi: &mut SPIM, start_addr: u8, buf: &[u8]) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        self.write_buffer(spi, Page::Pwm, start_addr, buf)
+    }
+
+    /// Write to Scaling registers
+    pub fn scaling<SPIM>(&self, spi: &mut SPIM, start_addr: u8, buf: &[u8]) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        self.write_buffer(spi, Page::Scaling, start_addr, buf)
+    }
+
+    /// Write global brightness register
+    pub fn global_brightness<SPIM>(&self, spi: &mut SPIM, val: u8) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        self.write_reg(spi, Page::Config, 0x01, val)
+    }
+
+    /// Setup for detection functions (short + open)
+    fn detect_setup<SPIM>(&self, spi: &mut SPIM) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Set to normal mode
+        self.write_reg(spi, Page::Config, 0x00, 0x09)?;
+
+        // Set PWM channels to 0xFF
+        for i in 0x01..=ISSI_PAGE_LEN {
+            self.write_reg(spi, Page::Pwm, i as u8, 0xFF)?;
+        }
+
+        // Set Scaling channels to 0xFF
+        for i in 0x01..=ISSI_PAGE_LEN {
+            self.write_reg(spi, Page::Scaling, i as u8, 0xFF)?;
+        }
+
+        // Set (GCC) Global Current Control (needed for accurate readings)
+        self.write_reg(spi, Page::Config, 0x01, 0x0F)?;
+
+        // Set pull down resistors
+        self.write_reg(spi, Page::Config, 0x02, 0x00)?;
+
+        Ok(())
+    }
+
+    /// Setup open detect
+    /// Must delay 1 ms before reading the result
+    pub fn open_detect_setup<SPIM>(&self, spi: &mut SPIM) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Setup detection
+        self.detect_setup(spi)?;
+
+        // Set OSD to open detection
+        self.write_reg(spi, Page::Config, 0x00, 0x0B)?;
+
+        Ok(())
+    }
+
+    /// Setup short detect
+    /// Must delay 1 ms before reading the result
+    pub fn short_detect_setup<SPIM>(&self, spi: &mut SPIM) -> Result<(), IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Setup detection
+        self.detect_setup(spi)?;
+
+        // Set OSD to short detection
+        self.write_reg(spi, Page::Config, 0x00, 0x0D)?;
+
+        Ok(())
+    }
+
+    /// Retrieve the data after short or open detection has been enabled
+    /// (must wait at least 1 ms before attempting to read).
+    pub fn detect_finalize<SPIM>(&self, spi: &mut SPIM) -> Result<[u8; ISSI_OPEN_REG_LEN], IssiError>
+    where
+        SPIM: spi::FullDuplex<u8>,
+    {
+        // Read data
+        let buf: [u8; ISSI_OPEN_REG_LEN] = self.read_buffer(spi, Page::Config, ISSI_OPEN_REG_START)?;
+        defmt::info!("Detect: {:?}", buf);
+        Ok(buf)
     }
 }
