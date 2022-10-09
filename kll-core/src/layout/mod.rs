@@ -848,7 +848,7 @@ impl<'a, const LAYOUT_SIZE: usize> LayerLookup<'a, LAYOUT_SIZE> {
         let offset = offset as usize + count * core::mem::size_of::<TriggerCondition>() + 1;
 
         // Determine size of next combo
-        let count = self.trigger_guides[trigger as usize + offset as usize] as usize;
+        let count = self.trigger_guides[trigger as usize + offset] as usize;
         if count == 0 {
             None
         } else {
@@ -871,7 +871,7 @@ impl<'a, const LAYOUT_SIZE: usize> LayerLookup<'a, LAYOUT_SIZE> {
         let offset = offset as usize + count * core::mem::size_of::<Capability>() + 1;
 
         // Determine size of next combo
-        let count = self.result_guides[result as usize + offset as usize] as usize;
+        let count = self.result_guides[result as usize + offset] as usize;
         if count == 0 {
             None
         } else {

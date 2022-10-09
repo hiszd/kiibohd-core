@@ -9,6 +9,7 @@
 
 #![no_std]
 
+use core::marker::PhantomData;
 use embedded_hal::spi;
 use heapless::spsc::Queue;
 
@@ -44,8 +45,8 @@ pub enum IssiError {
 }
 
 pub struct IssiBuf<const CHIPS: usize> {
-    pwm: [[u8; ISSI_PAGE_LEN as usize]; CHIPS],
-    scaling: [[u8; ISSI_PAGE_LEN as usize]; CHIPS],
+    pwm: [[u8; ISSI_PAGE_LEN]; CHIPS],
+    scaling: [[u8; ISSI_PAGE_LEN]; CHIPS],
 }
 
 impl<const CHIPS: usize> IssiBuf<CHIPS> {
@@ -691,13 +692,16 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         &mut self,
         tx_buf: &mut [u32],
     ) -> Result<(usize, usize), IssiError> {
+        let chips = &self.cs.clone();
+        let pos = 0;
+
+        // Normal operation
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x0B);
+
         // Set scaling and pwm to max
         self.scale_pwm_max()?;
 
-        let chips = &self.cs;
-        let pos = 0;
-
-        // Set Global Current Control (needed for accurate readings)
+        // Set (GCC) Global Current Control (needed for accurate readings)
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x01, 0x0F);
 
         // Disable pull resistors
@@ -805,13 +809,16 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
         &mut self,
         tx_buf: &mut [u32],
     ) -> Result<(usize, usize), IssiError> {
+        let chips = &self.cs.clone();
+        let pos = 0;
+
+        // Normal operation
+        let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x0B);
+
         // Set scaling and pwm to max
         self.scale_pwm_max()?;
 
-        let chips = &self.cs;
-        let pos = 0;
-
-        // Set Global Current Control (needed for accurate readings)
+        // Set (GCC) Global Current Control (needed for accurate readings)
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x01, 0x0F);
 
         // Set pull down resistors
@@ -879,7 +886,7 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     /// This is used by the open and short detection features
     fn scale_pwm_max(&mut self) -> Result<(), IssiError> {
         for chip in 0..CHIPS {
-            for ch in ISSI_PAGE_START as usize..ISSI_PAGE_LEN as usize {
+            for ch in ISSI_PAGE_START as usize..ISSI_PAGE_LEN {
                 self.page_buf.scaling[chip][ch] = 0xFF;
                 self.page_buf.pwm[chip][ch] = 0xFF;
             }
@@ -979,58 +986,84 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 ///         }
 ///     });
 /// }
+///
+/// /// Instead of controlling CS using GPIO pins
+/// /// we use lastxfer to deassert CS after each transfer.
+/// /// This is unfortunately not part of embedded-hal so we need to implement it ourselves.
+/// /// Depending on the SPI implementation, you may need to re-enable the CS as well.
+/// fn deassert_cs(spi: &mut SpiMaster::<SpiU8>) {
+///     spi.lastxfer(true);
+/// }
 /// ```
-pub struct Is31fl3743b {
+pub struct Is31fl3743b<FRAMESIZE> {
     /// Default LED brightness, used during initialization
     initial_global_brightness: u8,
     /// Chip enable flag (used to power down the chips; often used for powersaving)
     enable: bool,
+    framesize: PhantomData<FRAMESIZE>,
 }
 
-impl Is31fl3743b {
+impl<FRAMESIZE> Is31fl3743b<FRAMESIZE>
+where
+    u8: From<FRAMESIZE>,
+{
     pub fn new(initial_global_brightness: u8, enable: bool) -> Self {
         Is31fl3743b {
             initial_global_brightness,
             enable,
+            framesize: PhantomData,
         }
     }
 
     /// Initializes/Resets state of ISSI chip
-    pub fn reset<SPIM>(&self, spi: &mut SPIM, follower: bool) -> Result<(), IssiError>
+    pub fn reset<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+        follower: bool,
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Resetting ISSI chip");
         // Clear LED pages
         // Call reset to clear all register (on all chips)
-        self.write_reg(spi, Page::Config, 0x2F, 0xAE)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x2F, 0xAE)?;
 
         // Reset the global brightness
-        self.write_reg(spi, Page::Config, 0x01, self.initial_global_brightness)?;
+        self.write_reg(
+            spi,
+            deassert_cs,
+            Page::Config,
+            0x01,
+            self.initial_global_brightness,
+        )?;
 
         // Enable pull-up and pull-down anti-ghosting registers
         // TODO: Make configurable
-        self.write_reg(spi, Page::Config, 0x02, 0x33)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x02, 0x33)?;
 
         // Set temperature roll-off
         // TODO: Make configurable
-        self.write_reg(spi, Page::Config, 0x24, 0x00)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x24, 0x00)?;
 
         if follower {
             // Follower/slave sync
             // TODO: Make spread specture configurable
-            self.write_reg(spi, Page::Config, 0x25, 0x80)?;
+            self.write_reg(spi, deassert_cs, Page::Config, 0x25, 0x80)?;
         } else {
             // Setup ISSI sync and spread spectrum function
             // XXX (HaaTa); The last chip is used as it is the last chip all of the frame data is sent to
             // This is imporant as it may take more time to send the packet than the ISSI chip can handle
             // between frames.
             // TODO: Make spread specture configurable
-            self.write_reg(spi, Page::Config, 0x25, 0xC0)?;
+            self.write_reg(spi, deassert_cs, Page::Config, 0x25, 0xC0)?;
         }
 
         // Disable software shutdown (if LEDs are enabled)
         if self.enable {
-            self.write_reg(spi, Page::Config, 0x00, 0x09)?;
+            self.write_reg(spi, deassert_cs, Page::Config, 0x00, 0x09)?;
         }
 
         Ok(())
@@ -1040,21 +1073,31 @@ impl Is31fl3743b {
     fn write_reg<SPIM>(
         &self,
         spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
         page: Page,
         addr: u8,
         val: u8,
     ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Writing ISSI register: {:?} {:02X} {:02X}", page, addr, val);
         // Write Page
         self.spi_send(spi, page as u8)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Write Address Reg
         self.spi_send(spi, addr)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Write Value
-        self.spi_send(spi, val)
+        self.spi_send(spi, val)?;
+        let _ = self.spi_read(spi)?; // Dummy read
+
+        // Close transaction
+        deassert_cs(spi);
+        Ok(())
     }
 
     /// Write ISSI register through SPI master interface using a buffer
@@ -1062,40 +1105,57 @@ impl Is31fl3743b {
     fn write_buffer<SPIM>(
         &self,
         spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
         page: Page,
         start_addr: u8,
         buf: &[u8],
     ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Writing ISSI buffer: {} {} {}", page, start_addr, buf);
         // Write Page
         self.spi_send(spi, page as u8)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Write Address Reg
         self.spi_send(spi, start_addr)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Write buffer
         for byte in buf {
             self.spi_send(spi, *byte)?;
+            let _ = self.spi_read(spi)?; // Dummy read
         }
+
+        // Close transaction
+        deassert_cs(spi);
         Ok(())
     }
 
     /*
     /// Read ISSI register through SPI master interface
-    fn read_reg<SPIM>(&self, spi: &mut SPIM, page: Page, addr: u8) -> Result<u8, IssiError>
+    fn read_reg<SPIM>(&self, spi: &mut SPIM, deassert_cs: fn(&mut SPIM), page: Page, addr: u8) -> Result<u8, IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Reading ISSI register: {:?} {:02X}", page, addr);
         // Write Page
         self.spi_send(spi, page as u8 | ISSI_SPI_READ_BIT)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Write Address Reg
         self.spi_send(spi, addr)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Read
-        self.spi_read(spi)
+        self.spi_send(spi, 0x00)?; // Dummy write
+        let val = self.spi_read(spi)?;
+
+        // Close transaction
+        deassert_cs(spi);
+        Ok(val)
     }
     */
 
@@ -1104,32 +1164,42 @@ impl Is31fl3743b {
     fn read_buffer<const LEN: usize, SPIM>(
         &self,
         spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
         page: Page,
         start_addr: u8,
     ) -> Result<[u8; LEN], IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Reading ISSI buffer: {} {}", page, start_addr);
         // Write Page
         self.spi_send(spi, page as u8 | ISSI_SPI_READ_BIT)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Write Address Reg
         self.spi_send(spi, start_addr)?;
+        let _ = self.spi_read(spi)?; // Dummy read
 
         // Read into buffer
         let mut buf: [u8; LEN] = [0; LEN];
         for val in buf.iter_mut().take(LEN) {
+            self.spi_send(spi, 0x00)?; // Dummy write
             *val = self.spi_read(spi)?;
         }
+
+        // Close transaction
+        deassert_cs(spi);
         Ok(buf)
     }
 
     /// Simplifies SPI master writes for this driver
     fn spi_send<SPIM>(&self, spi: &mut SPIM, val: u8) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
-        while let Err(e) = spi.send(val as u8) {
+        while let Err(e) = spi.send(val.into()) {
             match e {
                 nb::Error::WouldBlock => {
                     continue;
@@ -1145,17 +1215,18 @@ impl Is31fl3743b {
     /// Simplifies SPI master reads for this driver
     fn spi_read<SPIM>(&self, spi: &mut SPIM) -> Result<u8, IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
         loop {
             match spi.read() {
                 Ok(val) => {
-                    return Ok(val);
+                    return Ok(val.into());
                 }
                 Err(nb::Error::WouldBlock) => {
                     continue;
                 }
-                Err(_) => {
+                Err(_e) => {
                     return Err(IssiError::SpiError);
                 }
             }
@@ -1163,94 +1234,141 @@ impl Is31fl3743b {
     }
 
     /// Write to PWM registers
-    pub fn pwm<SPIM>(&self, spi: &mut SPIM, start_addr: u8, buf: &[u8]) -> Result<(), IssiError>
+    pub fn pwm<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+        start_addr: u8,
+        buf: &[u8],
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
-        self.write_buffer(spi, Page::Pwm, start_addr, buf)
+        defmt::trace!("Writing PWM: {} {}", start_addr, buf);
+        self.write_buffer(spi, deassert_cs, Page::Pwm, start_addr, buf)
     }
 
     /// Write to Scaling registers
-    pub fn scaling<SPIM>(&self, spi: &mut SPIM, start_addr: u8, buf: &[u8]) -> Result<(), IssiError>
+    pub fn scaling<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+        start_addr: u8,
+        buf: &[u8],
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
-        self.write_buffer(spi, Page::Scaling, start_addr, buf)
+        defmt::trace!("Writing Scaling: {} {}", start_addr, buf);
+        self.write_buffer(spi, deassert_cs, Page::Scaling, start_addr, buf)
     }
 
     /// Write global brightness register
-    pub fn global_brightness<SPIM>(&self, spi: &mut SPIM, val: u8) -> Result<(), IssiError>
+    pub fn global_brightness<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+        val: u8,
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
-        self.write_reg(spi, Page::Config, 0x01, val)
+        defmt::trace!("Writing Global Brightness: {}", val);
+        self.write_reg(spi, deassert_cs, Page::Config, 0x01, val)
     }
 
     /// Setup for detection functions (short + open)
-    fn detect_setup<SPIM>(&self, spi: &mut SPIM) -> Result<(), IssiError>
+    fn detect_setup<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Detect setup");
         // Set to normal mode
-        self.write_reg(spi, Page::Config, 0x00, 0x09)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x00, 0x09)?;
 
         // Set PWM channels to 0xFF
         for i in 0x01..=ISSI_PAGE_LEN {
-            self.write_reg(spi, Page::Pwm, i as u8, 0xFF)?;
+            self.write_reg(spi, deassert_cs, Page::Pwm, i as u8, 0xFF)?;
         }
 
         // Set Scaling channels to 0xFF
         for i in 0x01..=ISSI_PAGE_LEN {
-            self.write_reg(spi, Page::Scaling, i as u8, 0xFF)?;
+            self.write_reg(spi, deassert_cs, Page::Scaling, i as u8, 0xFF)?;
         }
 
         // Set (GCC) Global Current Control (needed for accurate readings)
-        self.write_reg(spi, Page::Config, 0x01, 0x0F)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x01, 0x0F)?;
 
         // Set pull down resistors
-        self.write_reg(spi, Page::Config, 0x02, 0x00)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x02, 0x00)?;
 
         Ok(())
     }
 
     /// Setup open detect
     /// Must delay 1 ms before reading the result
-    pub fn open_detect_setup<SPIM>(&self, spi: &mut SPIM) -> Result<(), IssiError>
+    pub fn open_detect_setup<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Open detect setup");
         // Setup detection
-        self.detect_setup(spi)?;
+        self.detect_setup(spi, deassert_cs)?;
 
         // Set OSD to open detection
-        self.write_reg(spi, Page::Config, 0x00, 0x0B)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x00, 0x0B)?;
 
         Ok(())
     }
 
     /// Setup short detect
     /// Must delay 1 ms before reading the result
-    pub fn short_detect_setup<SPIM>(&self, spi: &mut SPIM) -> Result<(), IssiError>
+    pub fn short_detect_setup<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+    ) -> Result<(), IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Short detect setup");
         // Setup detection
-        self.detect_setup(spi)?;
+        self.detect_setup(spi, deassert_cs)?;
 
         // Set OSD to short detection
-        self.write_reg(spi, Page::Config, 0x00, 0x0D)?;
+        self.write_reg(spi, deassert_cs, Page::Config, 0x00, 0x0D)?;
 
         Ok(())
     }
 
     /// Retrieve the data after short or open detection has been enabled
     /// (must wait at least 1 ms before attempting to read).
-    pub fn detect_finalize<SPIM>(&self, spi: &mut SPIM) -> Result<[u8; ISSI_OPEN_REG_LEN], IssiError>
+    pub fn detect_finalize<SPIM>(
+        &self,
+        spi: &mut SPIM,
+        deassert_cs: fn(&mut SPIM),
+    ) -> Result<[u8; ISSI_OPEN_REG_LEN], IssiError>
     where
-        SPIM: spi::FullDuplex<u8>,
+        FRAMESIZE: From<u8>,
+        SPIM: spi::FullDuplex<FRAMESIZE>,
     {
+        defmt::trace!("Detect finalize");
         // Read data
-        let buf: [u8; ISSI_OPEN_REG_LEN] = self.read_buffer(spi, Page::Config, ISSI_OPEN_REG_START)?;
+        let buf: [u8; ISSI_OPEN_REG_LEN] = self.read_buffer(spi, deassert_cs, Page::Config, ISSI_OPEN_REG_START)?;
         defmt::info!("Detect: {:?}", buf);
         Ok(buf)
     }
