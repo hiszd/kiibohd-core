@@ -649,6 +649,9 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     /// Configures registers and does an open circuit detect
     /// Must wait at least 750 us after the registers are set before reading
     pub fn open_circuit_detect_setup(&mut self) -> Result<(), IssiError> {
+        // Set scaling and pwm to max
+        self.scale_pwm_max()?;
+
         if self
             .func_queue
             .enqueue(Function::OpenCircuitDetectSetup)
@@ -697,9 +700,6 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
         // Normal operation
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x0B);
-
-        // Set scaling and pwm to max
-        self.scale_pwm_max()?;
 
         // Set (GCC) Global Current Control (needed for accurate readings)
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x01, 0x0F);
@@ -766,6 +766,9 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
     /// Configures registers and does a short circuit detect
     /// Must wait at least 750 us after the registers are set before reading
     pub fn short_circuit_detect_setup(&mut self) -> Result<(), IssiError> {
+        // Set scaling and pwm to max
+        self.scale_pwm_max()?;
+
         if self
             .func_queue
             .enqueue(Function::ShortCircuitDetectSetup)
@@ -814,9 +817,6 @@ impl<const CHIPS: usize, const QUEUE_SIZE: usize> Is31fl3743bAtsam4Dma<CHIPS, QU
 
         // Normal operation
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x00, 0x0B);
-
-        // Set scaling and pwm to max
-        self.scale_pwm_max()?;
 
         // Set (GCC) Global Current Control (needed for accurate readings)
         let pos = atsam4_reg_sync!(tx_buf, pos, chips, Page::Config as u8, 0x01, 0x0F);
