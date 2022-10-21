@@ -13,6 +13,16 @@ pub mod state;
 pub use self::state::{KeyState, State};
 use embedded_hal::digital::v2::{InputPin, IoPin, OutputPin, PinState};
 
+#[cfg(feature = "kll-core")]
+use kll_core::TriggerEvent;
+#[cfg(feature = "kll-core")]
+use heapless::Vec;
+
+#[cfg(feature = "kll-core")]
+pub trait KeyScanning {
+    fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4>;
+}
+
 /// Records momentary push button events
 ///
 /// Cycles can be converted to time by multiplying by the scan period (Matrix::period())
@@ -248,7 +258,7 @@ impl<
 
     /// Generate event from KeyState
     /// Useful when trying to determine if a key has not been pressed
-    pub fn generate_event(&self, index: usize) -> Option<KeyEvent> {
+    pub fn generate_key_event(&self, index: usize) -> Option<KeyEvent> {
         let state = self.state(index);
 
         state.map(|state| match state.state().0 {
@@ -265,9 +275,28 @@ impl<
 
 #[cfg(feature = "kll-core")]
 mod converters {
-    use crate::KeyEvent;
+    use crate::*;
     use heapless::Vec;
     use kll_core::TriggerEvent;
+
+    impl<
+            C: OutputPin,
+            R: InputPin,
+            const CSIZE: usize,
+            const RSIZE: usize,
+            const MSIZE: usize,
+            const SCAN_PERIOD_US: u32,
+            const DEBOUNCE_US: u32,
+            const IDLE_MS: u32,
+        > KeyScanning for Matrix<C, R, CSIZE, RSIZE, MSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS>
+    {
+        /// Convert matrix state into a TriggerEvent
+        fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
+            self.generate_key_event(index)
+                .unwrap()
+                .trigger_event(index, false)
+        }
+    }
 
     impl KeyEvent {
         pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {

@@ -140,14 +140,15 @@ impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: 
 mod converters {
     use crate::{Matrix, OutputPin};
     use heapless::Vec;
+    use kiibohd_keyscanning::KeyScanning;
     use kll_core::TriggerEvent;
 
     impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: bool>
-        Matrix<C, CSIZE, MSIZE, INVERT_STROBE>
+        KeyScanning for Matrix<C, CSIZE, MSIZE, INVERT_STROBE>
     {
         /// Generate event from SenseData
         /// Useful when trying to determine if a key has not been pressed
-        pub fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
+        fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
             if let Some(state) = self.state(index) {
                 if let Ok(data) = state {
                     data.trigger_event(index, true)

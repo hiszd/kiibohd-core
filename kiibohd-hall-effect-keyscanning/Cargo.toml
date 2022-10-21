@@ -11,12 +11,13 @@ categories = ["embedded", "no-std"]
 
 [dependencies]
 kiibohd-hall-effect = { version = "0.1", path = "../kiibohd-hall-effect" }
+kiibohd-keyscanning = { version = "0.1", path = "../kiibohd-keyscanning", optional = true }
 kll-core            = { version = "0.1", path = "../kll-core", optional = true }
 generic-array       = "0.14.4"
 embedded-hal        = "0.2.7"
 heapless            = "0.7.14"
 
 [features]
-kll-core = ["kiibohd-hall-effect/kll-core", "dep:kll-core"]
+kll-core = ["kiibohd-hall-effect/kll-core", "kiibohd-keyscanning?/kll-core", "dep:kll-core", "dep:kiibohd-keyscanning"]
 
-defmt = ["kiibohd-hall-effect/defmt", "kll-core?/defmt"]
+defmt = ["kiibohd-hall-effect/defmt", "kll-core?/defmt", "kiibohd-keyscanning?/defmt"]
