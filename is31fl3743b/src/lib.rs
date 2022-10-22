@@ -1368,7 +1368,8 @@ where
     {
         defmt::trace!("Detect finalize");
         // Read data
-        let buf: [u8; ISSI_OPEN_REG_LEN] = self.read_buffer(spi, deassert_cs, Page::Config, ISSI_OPEN_REG_START)?;
+        let buf: [u8; ISSI_OPEN_REG_LEN] =
+            self.read_buffer(spi, deassert_cs, Page::Config, ISSI_OPEN_REG_START)?;
         defmt::info!("Detect: {:?}", buf);
         Ok(buf)
     }

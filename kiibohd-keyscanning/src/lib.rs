@@ -14,9 +14,9 @@ pub use self::state::{KeyState, State};
 use embedded_hal::digital::v2::{InputPin, IoPin, OutputPin, PinState};
 
 #[cfg(feature = "kll-core")]
-use kll_core::TriggerEvent;
-#[cfg(feature = "kll-core")]
 use heapless::Vec;
+#[cfg(feature = "kll-core")]
+use kll_core::TriggerEvent;
 
 #[cfg(feature = "kll-core")]
 pub trait KeyScanning {
