@@ -6,7 +6,6 @@
 // copied, modified, or distributed except according to those terms.
 
 #![no_std]
-#![feature(arbitrary_enum_discriminant)]
 #![feature(const_ptr_read)]
 #![feature(let_chains)]
 
