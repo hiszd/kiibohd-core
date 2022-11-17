@@ -410,7 +410,7 @@ fn basic_init_test() {
 
     // Invalid lookup
     assert!(
-        lookup.trigger_list((100, 100, 100)) == None,
+        lookup.trigger_list((100, 100, 100)).is_none(),
         "Failed 'Invalid' (100, 100, 100) lookup"
     );
 
