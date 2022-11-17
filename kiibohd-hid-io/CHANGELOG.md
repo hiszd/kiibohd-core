@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#13](https://github.com/kiibohd/kiibohd-core/issues/13)**
     - Add keywords and categories to all the Cargo.toml (and fix a few typos) ([`4553cb4`](https://github.com/kiibohd/kiibohd-core/commit/4553cb456ab7df2e2874f03e385166e062787375))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - HID-IO pixel control ([`9f896c7`](https://github.com/kiibohd/kiibohd-core/commit/9f896c734188198c9037d7d2fade4f4a2fda96fc))
     - Add h0021 and h0026 to kiibohd-hid-io ([`2c23d22`](https://github.com/kiibohd/kiibohd-core/commit/2c23d224d2e2639d59c5b20e1eae49422d117e30))
     - Fix hid-io-protocol missing generic ([`f07c269`](https://github.com/kiibohd/kiibohd-core/commit/f07c269adb5ea1392bff83d3c93d1055f104486c))

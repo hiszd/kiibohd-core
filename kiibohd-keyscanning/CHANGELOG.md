@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#13](https://github.com/kiibohd/kiibohd-core/issues/13)**
     - Add keywords and categories to all the Cargo.toml (and fix a few typos) ([`4553cb4`](https://github.com/kiibohd/kiibohd-core/commit/4553cb456ab7df2e2874f03e385166e062787375))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
     - Add KeyScanning trait ([`218896b`](https://github.com/kiibohd/kiibohd-core/commit/218896b335f0b46d7cf9d5430afb8a98feb2c4b7))
     - Add better debbuing for i331fl3743b crate ([`6416b1c`](https://github.com/kiibohd/kiibohd-core/commit/6416b1cf07440184ba088a077f59a7414a7fb8eb))

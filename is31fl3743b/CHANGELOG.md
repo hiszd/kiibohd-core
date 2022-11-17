@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#13](https://github.com/kiibohd/kiibohd-core/issues/13)**
     - Add keywords and categories to all the Cargo.toml (and fix a few typos) ([`4553cb4`](https://github.com/kiibohd/kiibohd-core/commit/4553cb456ab7df2e2874f03e385166e062787375))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
     - Fix pwm and scaling for open/short detection on is31fl3743b ([`0ec2103`](https://github.com/kiibohd/kiibohd-core/commit/0ec21033b564b8cb18051c15d36e657e12d9d843))
     - Update is31fl3743b and fix clippy warnings ([`f125eed`](https://github.com/kiibohd/kiibohd-core/commit/f125eed08a1b2d390b7b8d2fa563aeb2d5759b7e))

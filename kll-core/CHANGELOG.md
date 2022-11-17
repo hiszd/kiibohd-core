@@ -30,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#4](https://github.com/kiibohd/kiibohd-core/issues/4)**
     - Conversions for animations and led ([`2b09501`](https://github.com/kiibohd/kiibohd-core/commit/2b095013128063d9920c65fb8c74d43ceebae5cb))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
     - Update is31fl3743b and fix clippy warnings ([`f125eed`](https://github.com/kiibohd/kiibohd-core/commit/f125eed08a1b2d390b7b8d2fa563aeb2d5759b7e))
     - Add better debbuing for i331fl3743b crate ([`6416b1c`](https://github.com/kiibohd/kiibohd-core/commit/6416b1cf07440184ba088a077f59a7414a7fb8eb))

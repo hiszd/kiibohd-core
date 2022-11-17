@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#4](https://github.com/kiibohd/kiibohd-core/issues/4)**
     - Conversions for animations and led ([`2b09501`](https://github.com/kiibohd/kiibohd-core/commit/2b095013128063d9920c65fb8c74d43ceebae5cb))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - Update is31fl3743b and fix clippy warnings ([`f125eed`](https://github.com/kiibohd/kiibohd-core/commit/f125eed08a1b2d390b7b8d2fa563aeb2d5759b7e))
     - Fix clippy lints ([`6d404e5`](https://github.com/kiibohd/kiibohd-core/commit/6d404e561abd569c609af0e03716bb79e9cdeb24))
     - Update defmt configurations ([`58c3aac`](https://github.com/kiibohd/kiibohd-core/commit/58c3aac6996ba72a24c12910e7875ecd2f6be969))

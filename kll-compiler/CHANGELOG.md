@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#4](https://github.com/kiibohd/kiibohd-core/issues/4)**
     - Conversions for animations and led ([`2b09501`](https://github.com/kiibohd/kiibohd-core/commit/2b095013128063d9920c65fb8c74d43ceebae5cb))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`59624f8`](https://github.com/kiibohd/kiibohd-core/commit/59624f8af383ae9c8bef7a63a886aefba50f92ef))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
     - cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
     - Add KeyScanning trait ([`218896b`](https://github.com/kiibohd/kiibohd-core/commit/218896b335f0b46d7cf9d5430afb8a98feb2c4b7))

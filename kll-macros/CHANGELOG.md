@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#4](https://github.com/kiibohd/kiibohd-core/issues/4)**
     - Conversions for animations and led ([`2b09501`](https://github.com/kiibohd/kiibohd-core/commit/2b095013128063d9920c65fb8c74d43ceebae5cb))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - Update README.md ([`8075ed7`](https://github.com/kiibohd/kiibohd-core/commit/8075ed7527b687f98f1c15f3a9c84a7c24d40f77))
     - Updating Cargo.toml files to publish initial crates ([`e18dafb`](https://github.com/kiibohd/kiibohd-core/commit/e18dafb3802406146f6f70b522418d1139cec09c))
     - Adding README.md for kll-macros ([`603de2f`](https://github.com/kiibohd/kiibohd-core/commit/603de2f8172c09bb47ab1e038299a97bf79c4e4c))

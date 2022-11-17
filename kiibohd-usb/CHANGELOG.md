@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#13](https://github.com/kiibohd/kiibohd-core/issues/13)**
     - Add keywords and categories to all the Cargo.toml (and fix a few typos) ([`4553cb4`](https://github.com/kiibohd/kiibohd-core/commit/4553cb456ab7df2e2874f03e385166e062787375))
  * **Uncategorized**
-    - Initial CHANGELOG.md ([`627f8cf`](https://github.com/kiibohd/kiibohd-core/commit/627f8cff132582bea6935bfed3b095d46cbcb735))
+    - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - Add better debbuing for i331fl3743b crate ([`6416b1c`](https://github.com/kiibohd/kiibohd-core/commit/6416b1cf07440184ba088a077f59a7414a7fb8eb))
     - usbd-hid now uses defmt instead of defmt-impl feature ([`4039041`](https://github.com/kiibohd/kiibohd-core/commit/4039041f1e79ad10fd87e3c2536da4f4b240feea))
     - [kiibohd-usb] Adding HID Lock LED support ([`ce32c30`](https://github.com/kiibohd/kiibohd-core/commit/ce32c302c003900690c645d70ea2c97e87b370ce))
