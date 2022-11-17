@@ -1,6 +1,6 @@
 [package]
 name = "kiibohd-usb"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Jacob Alexander <haata@kiibohd.com>"]
 edition = "2021"
 description = "Kiibohd USB HID Interface"
