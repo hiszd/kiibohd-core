@@ -322,6 +322,7 @@ impl<'a> KllDatastore<'a> {
     }
 }
 
+#[allow(clippy::result_large_err)]
 pub fn parse(text: &str) -> Result<KllFile, PestError> {
     KllFile::from_str(text)
 }

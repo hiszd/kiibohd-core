@@ -412,7 +412,7 @@ impl KLLParser {
 }
 
 impl<'a> KllFile<'a> {
-    #[allow(clippy::should_implement_trait)]
+    #[allow(clippy::should_implement_trait, clippy::result_large_err)]
     pub fn from_str(text: &str) -> Result<KllFile> {
         let inputs = KLLParser::parse(Rule::file, text)?;
         let input = inputs.single()?;
