@@ -1,6 +1,6 @@
 [package]
 name = "kiibohd-hall-effect-keyscanning"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Jacob Alexander <haata@kiibohd.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
@@ -10,9 +10,9 @@ keywords = ["no-std", "embedded", "keyboard", "hardware-support"]
 categories = ["embedded", "no-std"]
 
 [dependencies]
-kiibohd-hall-effect = { version = "0.1", path = "../kiibohd-hall-effect" }
-kiibohd-keyscanning = { version = "0.1", path = "../kiibohd-keyscanning", optional = true }
-kll-core            = { version = "0.1", path = "../kll-core", optional = true }
+kiibohd-hall-effect = { version = "^0.1.2", path = "../kiibohd-hall-effect" }
+kiibohd-keyscanning = { version = "^0.1.2", path = "../kiibohd-keyscanning", optional = true }
+kll-core            = { version = "^0.1.5", path = "../kll-core", optional = true }
 generic-array       = "0.14.4"
 embedded-hal        = "0.2.7"
 heapless            = "0.7.14"
