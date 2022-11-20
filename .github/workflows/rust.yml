@@ -11,19 +11,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all
-      # Temporary action until bincode-core is converted to bincode
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --manifest-path kll-compiler/Cargo.toml
+      - name: Cargo Check
+        run: cargo check --all
+      # kll-compiler is std and must be kept separate from the no_std crates
+      - name: Cargo Check (kll-compiler)
+        run: cargo check --manifest-path kll-compiler/Cargo.toml
 
   build:
     name: Build
@@ -32,19 +27,14 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --all
-      # Temporary action until bincode-core is converted to bincode
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --manifest-path kll-compiler/Cargo.toml
+      - name: Cargo Build
+        run: cargo build --all
+      # kll-compiler is std and must be kept separate from the no_std crates
+      - name: Cargo Build (kll-compiler)
+        run: cargo build --manifest-path kll-compiler/Cargo.toml
 
   test:
     name: Test
@@ -53,19 +43,18 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all
-      # Temporary action until bincode-core is converted to bincode
+      - name: Cargo Test
+        run: cargo test --all
+      # kll-compiler is std and must be kept separate from the no_std crates
       - uses: actions-rs/cargo@v1
         with:
           command: test
           args: --manifest-path kll-compiler/Cargo.toml
+      - name: Cargo Test
+        run: cargo test --manifest-path kll-compiler/Cargo.toml
 
   fmt:
     name: Rustfmt
@@ -74,20 +63,15 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          override: true
-      - run: rustup component add rustfmt
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
-      # Temporary action until bincode-core is converted to bincode
-      - uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --manifest-path kll-compiler/Cargo.toml -- --check
+          components: rustfmt
+      - name: Rustfmt Check
+        uses: actions-rust-lang/rustfmt@v1
+      # kll-compiler is std and must be kept separate from the no_std crates
+      - name: Cargo Rustfmt
+        run: cargo fmt --manifest-path kll-compiler/Cargo.toml -- --check
 
   clippy:
     name: Clippy
@@ -96,20 +80,15 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          override: true
-      - run: rustup component add clippy
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets -- -D warnings
-      # Temporary action until bincode-core is converted to bincode
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-targets --manifest-path kll-compiler/Cargo.toml -- -D warnings
+          components: clippy
+      - name: Cargo Clippy
+        run: cargo clippy --all-targets -- -D warnings
+      # kll-compiler is std and must be kept separate from the no_std crates
+      - name: Cargo Clippy
+        run: cargo clippy --manifest-path kll-compiler/Cargo.toml -- -D warnings
 
   doc:
     name: Doc Check
@@ -118,20 +97,16 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: true
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: nightly
-          override: true
-      - uses: actions-rs/cargo@v1
+          components: rust-docs
+      - name: Cargo Doc
         env:
           RUSTDOCFLAGS: -Dwarnings
-        with:
-          command: doc
-          args: --all
-      # Temporary action until bincode-core is converted to bincode
-      - uses: actions-rs/cargo@v1
+        run: cargo doc --all
+      # kll-compiler is std and must be kept separate from the no_std crates
+      - name: Cargo Doc
         env:
           RUSTDOCFLAGS: -Dwarnings
-        with:
-          command: doc
-          args: --manifest-path kll-compiler/Cargo.toml
+        run: cargo doc --manifest-path kll-compiler/Cargo.toml
