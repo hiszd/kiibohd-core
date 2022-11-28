@@ -13,3 +13,6 @@ proc-macro = true
 [dev-dependencies]
 kll-core = { path = "../kll-core" }
 kll-hid = { path = "../kll-hid" }
+
+[package.metadata.cargo-udeps.ignore]
+development = ["kll-core", "kll-hid"]

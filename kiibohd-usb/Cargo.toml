@@ -11,7 +11,7 @@ repository = "https://github.com/kiibohd/kiibohd-core"
 
 [dependencies]
 defmt = { version = "0.3", optional = true }
-heapless = { version = "0.7.14" }
+heapless = { version = "0.7" }
 kiibohd-hid-io = { version = "^0.1.2", path = "../kiibohd-hid-io", optional = true }
 kll-core = { version = "^0.1.5", path = "../kll-core", optional = true }
 log = { version = "^0.4", default-features = false }
@@ -19,7 +19,9 @@ usb-device = { version = "0.2.9" }
 usbd-hid = { version = "0.6.1" }
 
 [dev-dependencies]
-libc-print = "0.1.16"
+# NOTE: Enable this is you need to debug unit tests further
+#       cargo doesn't have a way to optionally enable dev-dependencies currently
+#libc-print = "0.1.16"
 
 
 [features]

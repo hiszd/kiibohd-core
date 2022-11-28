@@ -11,6 +11,7 @@ categories = ["embedded", "no-std"]
 
 [dependencies]
 alphanumeric-sort   = "1.4"
+clap                = { version = "3.2", features = ["derive"] }
 derive-object-merge = "0.1.0-alpha1"
 enum-utils          = "0.1"
 kll-core            = { version = "0.1", path = "../kll-core" }
@@ -20,8 +21,7 @@ object-merge        = "0.1.0-alpha1"
 pest                = { version = "2.4", features = ["pretty-print"] }
 pest_consume        = "1.1"
 pest_derive         = "2.4"
-structopt           = "0.3"
 
 
 [dev-dependencies]
-flexi_logger    = "^0.16"
+flexi_logger    = "0.24"

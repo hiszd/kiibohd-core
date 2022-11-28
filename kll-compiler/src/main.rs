@@ -1,9 +1,9 @@
+use clap::Parser;
 use kll_compiler::{Filestore, KllDatastore, KllGroups};
 use layouts_rs::Layouts;
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
-use structopt::StructOpt;
 
 #[derive(Debug, PartialEq, Eq, enum_utils::FromStr)]
 #[enumeration(rename_all = "lowercase")]
@@ -21,35 +21,37 @@ pub enum EmitterType {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
+#[clap(author, version, about, long_about = None)]
 struct CliOpts {
     /// Activate debug mode
     // short and long flags (-d, --debug) will be deduced from the field's name
+    #[clap(short, long)]
     #[structopt(short, long)]
     debug: bool,
 
     /// Specify target emitter for the KLL compiler. Pass multiple times to use more than one.
-    #[structopt(long, default_value = "kiibohd")]
+    #[clap(long, value_parser, value_name = "kiibohd")]
     emitter: String,
 
     /// Specify base configuration .kll files, earliest priority
     /// Contains capabilities, defines, and other similar information
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     config: Vec<PathBuf>,
 
     /// Specify base map configuration, applied after config .kll files.
     /// The base map is applied prior to all default and partial maps and is used as the basis for them.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     base: Vec<PathBuf>,
 
     /// Specify .kll files to layer on top of the default map to create a combined map.
     /// Also known as layer 0.
-    #[structopt(long, parse(from_os_str))]
+    #[clap(long, value_parser)]
     default: Vec<PathBuf>,
 
     /// Specify .kll files to generate partial map, multiple files per flag.
     /// Each -p defines another partial map (new layer)
-    #[structopt(long, parse(from_os_str))]
+    #[clap(short, long, value_parser)]
     partial: Vec<PathBuf>,
 
     #[structopt(flatten)]
@@ -57,31 +59,31 @@ struct CliOpts {
 }
 
 #[allow(dead_code)]
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct KiibohdOpts {
     /// Specify KLL define .h file output.
-    #[structopt(long, parse(from_os_str), default_value = "kll_defs.h")]
+    #[clap(long, value_parser, value_name = "kll_defs.h")]
     def_output: PathBuf,
 
     /// Specify USB HID Lookup .h file output.
-    #[structopt(long, parse(from_os_str), default_value = "usb_id.h")]
+    #[clap(long, value_parser, value_name = "usb_id.h")]
     hid_output: PathBuf,
 
     /// Specify KLL map .h file output (key bindings)
-    #[structopt(long, parse(from_os_str), default_value = "generatedKeymap.h")]
+    #[clap(long, value_parser, value_name = "generatedKeymap.h")]
     map_output: PathBuf,
 
     /// Specify KLL map .h file output. (animation and lighting)
-    #[structopt(long, parse(from_os_str), default_value = "generatedPixelmap.h")]
+    #[clap(long, value_parser, value_name = "generatedPixelmap.h")]
     pixel_output: PathBuf,
 
     /// Specify json output file for settings dictionary.
-    #[structopt(long, parse(from_os_str), default_value = "kll.json")]
+    #[clap(long, value_parser, value_name = "kll.json")]
     json_output: PathBuf,
 }
 
 fn main() {
-    let args = CliOpts::from_args();
+    let args = CliOpts::parse();
     if args.debug {
         println!("=== ARGS === \n{:#?}", &args);
     }

@@ -1,4 +1,4 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2022 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -23,7 +23,8 @@ enum LogError {
 
 /// Lite logging setup
 fn setup_logging_lite() -> Result<(), LogError> {
-    match Logger::with_env_or_str("")
+    match Logger::try_with_env_or_str("")
+        .unwrap()
         .format(flexi_logger::colored_default_format)
         .format_for_files(flexi_logger::colored_detailed_format)
         .duplicate_to_stderr(flexi_logger::Duplicate::All)

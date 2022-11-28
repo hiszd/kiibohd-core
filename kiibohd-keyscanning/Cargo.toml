@@ -14,7 +14,7 @@ categories = ["embedded", "no-std", "hardware-support"]
 [dependencies]
 defmt           = { version = "0.3", optional = true }
 embedded-hal    = { version = "0.2.7", features = ["unproven"] }
-heapless        = "0.7.14"
+heapless        = { version = "0.7", optional = true }
 kll-core        = { version = "^0.1.5", path = "../kll-core", optional = true }
 
 [features]
@@ -22,6 +22,6 @@ kll-core        = { version = "^0.1.5", path = "../kll-core", optional = true }
 default = []
 
 # Used to convert KeyState to TriggerEvent
-kll-core = ["dep:kll-core"]
+kll-core = ["dep:kll-core", "dep:heapless", "defmt"]
 
 defmt = ["dep:defmt", "kll-core?/defmt"]

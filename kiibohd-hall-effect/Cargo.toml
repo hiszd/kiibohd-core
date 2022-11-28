@@ -26,11 +26,10 @@ kll-core = ["dep:kll-core"]
 
 [dependencies]
 defmt    = { version = "0.3", optional = true }
-heapless = { version = "0.7.14" }
+heapless = { version = "0.7" }
 kll-core = { version = "^0.1.5", path = "../kll-core", optional = true }
 log      = { version = "^0.4", default-features = false }
-typenum  = { version = "^1.12", features = ["no_std"] }
 
 
 [dev-dependencies]
-flexi_logger    = "^0.16"
+flexi_logger    = "0.24"
