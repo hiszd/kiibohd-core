@@ -5,15 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.1.6 (2022-11-29)
+
+### Bug Fixes
+
+ - <csr-id-5da78a4f2c7c359ceea2367a223beea5996a66d1/> Update CHANGELOGs
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release over the course of 11 calendar days.
+ - 3 commits contributed to the release over the course of 11 calendar days.
  - 11 days passed between releases.
- - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
 ### Commit Details
@@ -23,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Update CHANGELOGs ([`5da78a4`](https://github.com/kiibohd/kiibohd-core/commit/5da78a4f2c7c359ceea2367a223beea5996a66d1))
     - Update GitHub Actions (deny, pants, udeps) ([`b6ec165`](https://github.com/kiibohd/kiibohd-core/commit/b6ec165d19153d8acaffb8ff4ae8504fcfe7e40c))
     - Fix clippy warning ([`45583cb`](https://github.com/kiibohd/kiibohd-core/commit/45583cb9e5ed185df8b257984aa5a1b996d49160))
 </details>
