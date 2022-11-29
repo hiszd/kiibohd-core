@@ -5,17 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.1.2 (2022-11-29)
 
 ### Changes
 
 - Migrate structopts to clap v3
 
+### Other
+
+ - <csr-id-2e5b8067349ebca66e1da4faaea43c8611dbaf80/> hid-io-protocol -> v0.1.4
+
+### Bug Fixes
+
+ - <csr-id-5da78a4f2c7c359ceea2367a223beea5996a66d1/> Update CHANGELOGs
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 149 commits contributed to the release over the course of 639 calendar days.
+ - 17 commits contributed to the release over the course of 11 calendar days.
+ - 11 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update CHANGELOG ([`19b4dac`](https://github.com/kiibohd/kiibohd-core/commit/19b4dacc658dc34aaa9761a0b4e125c01438322e))
+    - Release kll-macros v0.1.2, kll-core v0.1.6, kiibohd-hid-io v0.1.3 ([`cf9ad2e`](https://github.com/kiibohd/kiibohd-core/commit/cf9ad2ec744f0452856a1c778031665fe38c0e45))
+    - Update CHANGELOGs ([`5da78a4`](https://github.com/kiibohd/kiibohd-core/commit/5da78a4f2c7c359ceea2367a223beea5996a66d1))
+    - hid-io-protocol -> v0.1.4 ([`2e5b806`](https://github.com/kiibohd/kiibohd-core/commit/2e5b8067349ebca66e1da4faaea43c8611dbaf80))
+    - Update GitHub Actions (deny, pants, udeps) ([`b6ec165`](https://github.com/kiibohd/kiibohd-core/commit/b6ec165d19153d8acaffb8ff4ae8504fcfe7e40c))
+    - GitHub Actions - Fix toolchain action ([`2ca3bb4`](https://github.com/kiibohd/kiibohd-core/commit/2ca3bb40454e072a5cf3c28f6a911e0e505c4f54))
+    - GitHub Actions update ([`51ab9e8`](https://github.com/kiibohd/kiibohd-core/commit/51ab9e8c26ec0fccbf1ddbe8cdb7afd1f9bdd05f))
+    - Fix clippy warning ([`45583cb`](https://github.com/kiibohd/kiibohd-core/commit/45583cb9e5ed185df8b257984aa5a1b996d49160))
+    - Release kiibohd-usb v0.1.4 ([`ebe27a6`](https://github.com/kiibohd/kiibohd-core/commit/ebe27a62c73c3cc489be911581528072baa1a058))
+    - Adjusting changelogs prior to release of kiibohd-usb v0.1.4 ([`4191d69`](https://github.com/kiibohd/kiibohd-core/commit/4191d69f9d180a27a8b2759fa60c4adccfaded15))
+    - usb-device and usbd-hid patches have been merged upstream ([`1f218d8`](https://github.com/kiibohd/kiibohd-core/commit/1f218d80657b55cac6d9f07aeaf4491c6798002e))
+    - Release kiibohd-usb v0.1.3 ([`c688091`](https://github.com/kiibohd/kiibohd-core/commit/c688091c1c2ab9863700543598fb6ead9e1ad35f))
+    - Adjusting changelogs prior to release of kiibohd-usb v0.1.3 ([`8d8bff3`](https://github.com/kiibohd/kiibohd-core/commit/8d8bff34fcf48f89d59dede7b8d7104a6a659cf2))
+    - Release kiibohd-hid-io v0.1.2 ([`7bbcb23`](https://github.com/kiibohd/kiibohd-core/commit/7bbcb233604fffa6f86c64dc6b897091199c2dc4))
+    - Adjusting changelogs prior to release of kiibohd-hid-io v0.1.2 ([`f7ed5a7`](https://github.com/kiibohd/kiibohd-core/commit/f7ed5a7a4c2a93a8ea960cf756c24a7eb726e4be))
+    - Update to hid-io-protocol v0.1.3 ([`2e4b8c6`](https://github.com/kiibohd/kiibohd-core/commit/2e4b8c6ceab6adcb6a81f88fd68e866edd2ed67a))
+    - Release is31fl3743b v0.1.2, kll-hid v0.1.2, kll-macros v0.1.1, kll-core v0.1.5, kiibohd-hall-effect v0.1.2, kiibohd-keyscanning v0.1.2, kiibohd-hall-effect-keyscanning v0.1.2, kiibohd-hid-io v0.1.2, kiibohd-usb v0.1.3 ([`5a574aa`](https://github.com/kiibohd/kiibohd-core/commit/5a574aa1da0321613614c4d7f6f285fe149af409))
+</details>
+
+## 0.1.1 (2022-11-17)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 152 commits contributed to the release over the course of 639 calendar days.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#1](https://github.com/kiibohd/kiibohd-core/issues/1), [#13](https://github.com/kiibohd/kiibohd-core/issues/13), [#2](https://github.com/kiibohd/kiibohd-core/issues/2), [#3](https://github.com/kiibohd/kiibohd-core/issues/3), [#4](https://github.com/kiibohd/kiibohd-core/issues/4)
 
@@ -36,6 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#4](https://github.com/kiibohd/kiibohd-core/issues/4)**
     - Conversions for animations and led ([`2b09501`](https://github.com/kiibohd/kiibohd-core/commit/2b095013128063d9920c65fb8c74d43ceebae5cb))
  * **Uncategorized**
+    - Release kll-compiler v0.1.1 ([`e03888f`](https://github.com/kiibohd/kiibohd-core/commit/e03888f89f82b81e9fd3566e01af8e8359912034))
+    - Update pest and ignore clippy warnings ([`bd95015`](https://github.com/kiibohd/kiibohd-core/commit/bd950153f7d6b537d4e9c701e97f822668d6424d))
+    - Fix changelogs ([`33ef4a3`](https://github.com/kiibohd/kiibohd-core/commit/33ef4a3f4fded7a8dd1f00510291f4075711186f))
     - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
     - cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
