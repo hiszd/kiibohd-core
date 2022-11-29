@@ -7,11 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixes
+
+- General fixes
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 15 commits contributed to the release over the course of 339 calendar days.
+ - 1 commit contributed to the release over the course of 1 calendar day.
+ - 12 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update GitHub Actions (deny, pants, udeps) ([`b6ec165`](https://github.com/kiibohd/kiibohd-core/commit/b6ec165d19153d8acaffb8ff4ae8504fcfe7e40c))
+</details>
+
+## v0.1.2 (2022-11-17)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 16 commits contributed to the release over the course of 339 calendar days.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#13](https://github.com/kiibohd/kiibohd-core/issues/13)
 
@@ -24,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#13](https://github.com/kiibohd/kiibohd-core/issues/13)**
     - Add keywords and categories to all the Cargo.toml (and fix a few typos) ([`4553cb4`](https://github.com/kiibohd/kiibohd-core/commit/4553cb456ab7df2e2874f03e385166e062787375))
  * **Uncategorized**
+    - Fix changelogs ([`33ef4a3`](https://github.com/kiibohd/kiibohd-core/commit/33ef4a3f4fded7a8dd1f00510291f4075711186f))
     - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
     - cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
     - Fix pwm and scaling for open/short detection on is31fl3743b ([`0ec2103`](https://github.com/kiibohd/kiibohd-core/commit/0ec21033b564b8cb18051c15d36e657e12d9d843))
@@ -39,6 +65,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Doc typo ([`112c9a6`](https://github.com/kiibohd/kiibohd-core/commit/112c9a6fc1f2a96f1dae9bba7833b2fcb412973f))
     - Initial IS31FL3743B support for atsam4 pdc ([`9674dc7`](https://github.com/kiibohd/kiibohd-core/commit/9674dc7410b51b0cc13a5a52118f3bf2e4651e7a))
 </details>
-
-## v0.1.2 (2022-11-17)
 
