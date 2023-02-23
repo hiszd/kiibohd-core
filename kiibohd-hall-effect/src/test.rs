@@ -1,4 +1,4 @@
-// Copyright 2021-2022 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -16,6 +16,9 @@ use flexi_logger::Logger;
 
 // --- NOTE ---
 // These thresholds were calculated on a Keystone v1.00 TKL pcb
+
+// Max sample deviation
+const MAX_DEVIATION: usize = 16;
 
 // Calibration Mode Thresholds
 const MIN_OK_THRESHOLD: usize = 1350;
@@ -62,7 +65,7 @@ fn invalid_index() {
 
     // Add data to an invalid location
     assert!(sensors
-        .add_test::<1, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(1, 0)
+        .add_test::<1, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(1, 0)
         .is_err());
 
     // Retrieve data from an invalid location
@@ -87,6 +90,32 @@ fn not_ready() {
 }
 
 #[test]
+fn deviation_check() {
+    setup_logging_lite().ok();
+
+    // Allocate a single sensor
+    let mut sensors = Sensors::<1>::new().unwrap();
+
+    // Add two sensor samples, with a deviation between them of 20
+    // (200 and 220)
+    assert!(sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, 200
+        )
+        .is_ok());
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, 220,
+        );
+
+    // We're expecting Ok(None) as the samples should be discarded
+    if let Ok(None) = state.clone() {
+        return;
+    }
+    panic!("Unexpected state: {:?}", state);
+}
+
+#[test]
 fn sensor_missing() {
     setup_logging_lite().ok();
 
@@ -97,15 +126,16 @@ fn sensor_missing() {
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
-        .add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
             0,
             NO_SENSOR_THRESHOLD as u16 - 1
         )
         .is_ok());
-    let state = sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
-        0,
-        NO_SENSOR_THRESHOLD as u16 - 1,
-    );
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0,
+            NO_SENSOR_THRESHOLD as u16 - 1,
+        );
 
     if let Err(SensorError::CalibrationError(data)) = state.clone() {
         if data.cal == CalibrationStatus::SensorMissing {
@@ -126,10 +156,14 @@ fn sensor_broken() {
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
-        .add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, 0xFFFF,)
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, 0xFFFF,
+        )
         .is_ok());
-    let state =
-        sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, 0xFFFF);
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, 0xFFFF,
+        );
 
     if let Err(SensorError::CalibrationError(data)) = state.clone() {
         if data.cal == CalibrationStatus::SensorBroken {
@@ -150,15 +184,16 @@ fn magnet_missing() {
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
-        .add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
             0,
             MIN_OK_THRESHOLD as u16 - 1
         )
         .is_ok());
-    let state = sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
-        0,
-        MIN_OK_THRESHOLD as u16 - 1,
-    );
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0,
+            MIN_OK_THRESHOLD as u16 - 1,
+        );
 
     if let Err(SensorError::CalibrationError(data)) = state.clone() {
         if data.cal == CalibrationStatus::MagnetWrongPoleOrMissing {
@@ -174,10 +209,14 @@ fn magnet_check_calibration<const U: usize>(sensors: &mut Sensors<U>) {
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
-        .add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val)
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val
+        )
         .is_ok());
-    let state =
-        sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val);
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val,
+        );
 
     let mut test = false;
     if let Ok(Some(rval)) = state.clone() {
@@ -204,10 +243,14 @@ fn magnet_check_normal<const U: usize>(sensors: &mut Sensors<U>) {
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
-        .add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val)
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val
+        )
         .is_ok());
-    let state =
-        sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val);
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val,
+        );
 
     let mut test = false;
     if let Ok(Some(rval)) = state.clone() {
@@ -264,10 +307,14 @@ fn sensor_min_adjust() {
     let val = old_min - 1;
 
     assert!(sensors
-        .add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val)
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val
+        )
         .is_ok());
-    let state =
-        sensors.add_test::<2, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(0, val);
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val,
+        );
     let mut test = false;
     if let Ok(Some(rval)) = state.clone() {
         if rval.raw == val {

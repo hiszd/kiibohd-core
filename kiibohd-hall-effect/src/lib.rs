@@ -1,4 +1,4 @@
-// Copyright 2021-2022 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -120,17 +120,19 @@ impl SenseAnalysis {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RawData {
-    scratch_samples: u8,
-    scratch: u32,
     prev_scratch: u32,
+    scratch: u32,
+    deviation: i16,
+    scratch_samples: u8,
 }
 
 impl RawData {
     fn new() -> RawData {
         RawData {
-            scratch_samples: 0,
-            scratch: 0,
             prev_scratch: 0,
+            scratch: 0,
+            deviation: 0,
+            scratch_samples: 0,
         }
     }
 
@@ -139,7 +141,27 @@ impl RawData {
     /// SC: specifies the number of scratch samples until ready to average
     ///     Should be a power of two (1, 2, 4, 8, 16...) for the compiler to
     ///     optimize.
-    fn add<const SC: usize>(&mut self, reading: u16) -> Option<u16> {
+    fn add<const SC: usize, const MAX_DEV: usize>(&mut self, reading: u16) -> Option<u16> {
+        // If the previous sample deviates more than MAX_DEV, then reject
+        // all the samples in the set. This is to work around ADC noise that can be
+        // difficult to filter out.
+        // In general this should be imperceptible to the user and give a more consistent
+        // response to events.
+        //
+        // Make sure we have an even number of samples, otherwise ignore the last one
+        if !(SC & 1 == 1 && self.scratch_samples == SC as u8 - 1) {
+            // Check if even or odd
+            // Even - Add to deviation
+            // Odd - Subtract from deviation
+            if self.scratch_samples & 1 == 0 {
+                // Even
+                self.deviation += reading as i16;
+            } else {
+                // Odd
+                self.deviation -= reading as i16;
+            }
+        }
+
         self.scratch += reading as u32;
         self.scratch_samples += 1;
         trace!(
@@ -150,6 +172,15 @@ impl RawData {
         );
 
         if self.scratch_samples == SC as u8 {
+            // Check deviation, and ignore this sample set if it's too high
+            if SC > 1 && self.deviation.abs() > MAX_DEV as i16 {
+                // Reset scratch
+                self.scratch = 0;
+                self.scratch_samples = 0;
+                self.deviation = 0;
+                return None;
+            }
+
             let val = if self.prev_scratch == 0 {
                 self.scratch / SC as u32
             } else {
@@ -159,6 +190,7 @@ impl RawData {
             self.prev_scratch = self.scratch;
             self.scratch = 0;
             self.scratch_samples = 0;
+            self.deviation = 0;
             Some(val as u16)
         } else {
             None
@@ -170,6 +202,7 @@ impl RawData {
         self.scratch = 0;
         self.scratch_samples = 0;
         self.prev_scratch = 0;
+        self.deviation = 0;
     }
 }
 
@@ -266,12 +299,12 @@ impl SenseData {
     /// Analysis does a few more addition, subtraction and comparisions
     /// so it's a more expensive operation.
     /// Normal mode
-    fn add<const SC: usize>(
+    fn add<const SC: usize, const MAX_DEV: usize>(
         &mut self,
         reading: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
         // Add value to accumulator
-        if let Some(data) = self.data.add::<SC>(reading) {
+        if let Some(data) = self.data.add::<SC, MAX_DEV>(reading) {
             // Check min/max values
             if data > self.stats.max {
                 self.stats.max = data;
@@ -297,12 +330,18 @@ impl SenseData {
     /// Analysis does a few more addition, subtraction and comparisions
     /// so it's a more expensive operation.
     /// Test mode
-    fn add_test<const SC: usize, const MNOK: usize, const MXOK: usize, const NS: usize>(
+    fn add_test<
+        const SC: usize,
+        const MAX_DEV: usize,
+        const MNOK: usize,
+        const MXOK: usize,
+        const NS: usize,
+    >(
         &mut self,
         reading: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
         // Add value to accumulator
-        if let Some(data) = self.data.add::<SC>(reading) {
+        if let Some(data) = self.data.add::<SC, MAX_DEV>(reading) {
             // Check min/max values
             if data > self.stats.max {
                 self.stats.max = data;
@@ -396,14 +435,14 @@ impl<const S: usize> Sensors<S> {
     }
 
     /// Add sense data for a specific sensor
-    pub fn add<const SC: usize>(
+    pub fn add<const SC: usize, const MAX_DEV: usize>(
         &mut self,
         index: usize,
         reading: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
         trace!("Index: {}  Reading: {}", index, reading);
         if index < self.sensors.len() {
-            self.sensors[index].add::<SC>(reading)
+            self.sensors[index].add::<SC, MAX_DEV>(reading)
         } else {
             Err(SensorError::InvalidSensor(index))
         }
@@ -411,14 +450,20 @@ impl<const S: usize> Sensors<S> {
 
     /// Add sense data for a specific sensor
     /// Test mode
-    pub fn add_test<const SC: usize, const MNOK: usize, const MXOK: usize, const NS: usize>(
+    pub fn add_test<
+        const SC: usize,
+        const MAX_DEV: usize,
+        const MNOK: usize,
+        const MXOK: usize,
+        const NS: usize,
+    >(
         &mut self,
         index: usize,
         reading: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
         trace!("Index: {}  Reading: {}", index, reading);
         if index < self.sensors.len() {
-            self.sensors[index].add_test::<SC, MNOK, MXOK, NS>(reading)
+            self.sensors[index].add_test::<SC, MAX_DEV, MNOK, MXOK, NS>(reading)
         } else {
             Err(SensorError::InvalidSensor(index))
         }
