@@ -205,7 +205,7 @@ fn magnet_missing() {
 
 fn magnet_check_calibration<const U: usize>(sensors: &mut Sensors<U>) {
     // Add two values, larger MIN_OK_THRESHOLD
-    let val = MIN_OK_THRESHOLD as u16 + 2;
+    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16;
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
@@ -239,7 +239,7 @@ fn magnet_check_calibration<const U: usize>(sensors: &mut Sensors<U>) {
 
 fn magnet_check_normal<const U: usize>(sensors: &mut Sensors<U>) {
     // Add two values, larger MIN_OK_THRESHOLD
-    let val = MIN_OK_THRESHOLD as u16 + 2;
+    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16;
     // (needs 2 samples to finish averaging)
     // Once averaging is complete, we'll get a result
     assert!(sensors
@@ -304,7 +304,8 @@ fn sensor_min_adjust() {
 
     // Send a lower value than the min calibration and make sure it was set
     let old_min = sensors.get_data(0).unwrap().stats.min;
-    let val = old_min - 1;
+    let val = old_min - MAX_DEVIATION as u16;
+    let calc_new_min = (val + old_min) / 2;
 
     assert!(sensors
         .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
@@ -317,13 +318,107 @@ fn sensor_min_adjust() {
         );
     let mut test = false;
     if let Ok(Some(rval)) = state.clone() {
-        if rval.raw == val {
+        if rval.raw == calc_new_min {
             test = true;
         }
     }
-    assert!(test, "Unexpected state: {:?}", state);
+    assert!(
+        test,
+        "Unexpected state: {:?} != {} (old_min: {})",
+        state, val, old_min
+    );
 
     // Check min calibration
     let new_min = sensors.get_data(0).unwrap().stats.min;
-    assert!(val == new_min);
+    assert!(
+        calc_new_min == new_min,
+        "Unexpected min: {} != {}",
+        calc_new_min,
+        new_min
+    );
+}
+
+#[test]
+fn increase_decrease_flip() {
+    setup_logging_lite().ok();
+
+    // Allocate a single sensor
+    let mut sensors = Sensors::<1>::new().unwrap();
+
+    // Two sets of samples that will put the sensor into normal mode (and check both MagnetDetected
+    // states)
+    info!("Start magnet_calibrate");
+    magnet_calibrate::<1>(&mut sensors);
+    info!("End magnet_calibrate");
+
+    // Add two sensor samples (no deviation), a deviation higer than the current
+    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16 * 2;
+    let calc_val = (val + MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16) / 2;
+
+    info!("Higher value: {} start (averaged: {})", val, calc_val);
+    assert!(sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val
+        )
+        .is_ok());
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val,
+        );
+    let mut test = false;
+    if let Ok(Some(rval)) = state.clone() {
+        if rval.raw == calc_val {
+            test = true;
+        }
+    }
+    assert!(test, "Unexpected state: {:?} != {}", state, calc_val);
+    info!("Higher value: {} end", val);
+    let prev_val = val;
+
+    // Decrease input value, but by less than a deviation
+    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16 * 2 - MAX_DEVIATION as u16 / 2;
+    info!("Lower value (fail): {} start", val);
+    assert!(sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val
+        )
+        .is_ok());
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val,
+        );
+
+    // We're expecting Ok(None) as the samples should be discarded
+    let mut test = false;
+    if let Ok(None) = state.clone() {
+        test = true;
+    }
+    assert!(test, "Unexpected state: {:?}", state);
+    info!("Lower value (fail): {} end", val);
+
+    // Decrease input value, but by more than a deviation
+    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16 - 1;
+    let calc_val = (val + prev_val) / 2;
+    info!("Lower value (pass): {} start (averaged: {})", val, calc_val);
+    assert!(sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val
+        )
+        .is_ok());
+    let state = sensors
+        .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
+            0, val,
+        );
+    let mut test = false;
+    if let Ok(Some(rval)) = state.clone() {
+        if rval.raw == calc_val {
+            test = true;
+        }
+    }
+    assert!(
+        test,
+        "Unexpected state: {:?} != {} {}",
+        state, calc_val, prev_val
+    );
+    info!("Lower value (pass): {} end", val);
 }

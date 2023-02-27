@@ -115,6 +115,19 @@ impl SenseAnalysis {
     }
 }
 
+/// Keeps track of the direction of the adc values
+/// The direction changes when the ADC exceeds the value of MAX_DEV in the opposite direction
+/// The scratch value is immediately updated when moving in the same direction.
+/// If the next value is in the opposite direction, the scratch value will only be updated if it
+/// exceeds MAX_DEV.
+/// This should greatly stabilize ADCs while still allowing for high sensitivity.
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+enum Direction {
+    Increase = 0,
+    Decrease = 1,
+}
+
 /// Stores incoming raw samples
 #[repr(C)]
 #[derive(Clone, Debug)]
@@ -124,6 +137,7 @@ pub struct RawData {
     scratch: u32,
     deviation: i16,
     scratch_samples: u8,
+    direction: Direction,
 }
 
 impl RawData {
@@ -133,6 +147,7 @@ impl RawData {
             scratch: 0,
             deviation: 0,
             scratch_samples: 0,
+            direction: Direction::Increase,
         }
     }
 
@@ -187,10 +202,45 @@ impl RawData {
                 // Average previous value if non-zero
                 (self.scratch + self.prev_scratch) / SC as u32 / SC as u32
             };
+
+            let change = self.scratch as i32 - self.prev_scratch as i32;
+
+            // Check direction
+            match self.direction {
+                Direction::Increase => {
+                    if change < 0 {
+                        if change.abs() > MAX_DEV as i32 {
+                            // Direction changed
+                            self.direction = Direction::Decrease;
+                        } else {
+                            // Not enough change to change direction, so we ignore this sample set
+                            self.scratch = 0;
+                            self.scratch_samples = 0;
+                            self.deviation = 0;
+                            return None;
+                        }
+                    }
+                }
+                Direction::Decrease => {
+                    if change > 0 {
+                        if change.abs() > MAX_DEV as i32 {
+                            // Direction changed
+                            self.direction = Direction::Increase;
+                        } else {
+                            // Not enough change to change direction, so we ignore this sample set
+                            self.scratch = 0;
+                            self.scratch_samples = 0;
+                            self.deviation = 0;
+                            return None;
+                        }
+                    }
+                }
+            }
             self.prev_scratch = self.scratch;
             self.scratch = 0;
             self.scratch_samples = 0;
             self.deviation = 0;
+            trace!("Result: {}", val);
             Some(val as u16)
         } else {
             None

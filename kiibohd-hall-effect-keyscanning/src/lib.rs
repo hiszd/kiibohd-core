@@ -1,4 +1,4 @@
-// Copyright 2021-2022 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -118,12 +118,13 @@ impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: 
     /// Record ADC Hall Effect reading for the given the current row/sense index
     /// The sense index is usually 0-5, though it depends on the typical setup
     /// SC: Sample Count - How many samples before computing an analysis for a given index
-    pub fn record<const SC: usize>(
+    /// MAX_DEV: Maximum deviation between samples in the same iteration (defined by SC)
+    pub fn record<const SC: usize, const MAX_DEV: usize>(
         &mut self,
         index: usize,
         value: u16,
     ) -> Result<Option<&SenseAnalysis>, SensorError> {
-        self.sensors.add::<SC>(index, value)
+        self.sensors.add::<SC, MAX_DEV>(index, value)
     }
 
     /// Return current SenseAnalysis for a given index
