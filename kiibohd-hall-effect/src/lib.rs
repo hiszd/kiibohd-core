@@ -133,8 +133,8 @@ enum Direction {
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RawData {
-    prev_scratch: u32,
     scratch: u32,
+    prev_average: u16,
     deviation: i16,
     scratch_samples: u8,
     direction: Direction,
@@ -143,8 +143,8 @@ pub struct RawData {
 impl RawData {
     fn new() -> RawData {
         RawData {
-            prev_scratch: 0,
             scratch: 0,
+            prev_average: 0,
             deviation: 0,
             scratch_samples: 0,
             direction: Direction::Increase,
@@ -187,6 +187,9 @@ impl RawData {
         );
 
         if self.scratch_samples == SC as u8 {
+            let mut cur_average: u16 = (self.scratch / SC as u32) as u16;
+            trace!("Averaging: {} / {} = {}", self.scratch, SC, cur_average);
+
             // Check deviation, and ignore this sample set if it's too high
             if SC > 1 && self.deviation.abs() > MAX_DEV as i16 {
                 // Reset scratch
@@ -196,14 +199,7 @@ impl RawData {
                 return None;
             }
 
-            let val = if self.prev_scratch == 0 {
-                self.scratch / SC as u32
-            } else {
-                // Average previous value if non-zero
-                (self.scratch + self.prev_scratch) / SC as u32 / SC as u32
-            };
-
-            let change = self.scratch as i32 - self.prev_scratch as i32;
+            let change = cur_average as i32 - self.prev_average as i32;
 
             // Check direction
             match self.direction {
@@ -213,11 +209,9 @@ impl RawData {
                             // Direction changed
                             self.direction = Direction::Decrease;
                         } else {
-                            // Not enough change to change direction, so we ignore this sample set
-                            self.scratch = 0;
-                            self.scratch_samples = 0;
-                            self.deviation = 0;
-                            return None;
+                            // Not enough change to change direction, so we use the previous
+                            // samples
+                            cur_average = self.prev_average;
                         }
                     }
                 }
@@ -227,21 +221,34 @@ impl RawData {
                             // Direction changed
                             self.direction = Direction::Increase;
                         } else {
-                            // Not enough change to change direction, so we ignore this sample set
-                            self.scratch = 0;
-                            self.scratch_samples = 0;
-                            self.deviation = 0;
-                            return None;
+                            // Not enough change to change direction, so we use the previous
+                            // samples
+                            cur_average = self.prev_average;
                         }
                     }
                 }
             }
-            self.prev_scratch = self.scratch;
+
+            let val = if self.prev_average == 0 {
+                cur_average
+            } else {
+                // Average previous value if non-zero
+                let val = (cur_average + self.prev_average) / 2;
+                trace!(
+                    "Averaging prev: ({} + {}) / 2 = {}",
+                    cur_average,
+                    self.prev_average,
+                    val
+                );
+                val
+            };
+
+            self.prev_average = val;
             self.scratch = 0;
             self.scratch_samples = 0;
             self.deviation = 0;
             trace!("Result: {}", val);
-            Some(val as u16)
+            Some(val)
         } else {
             None
         }
@@ -251,7 +258,7 @@ impl RawData {
     fn reset(&mut self) {
         self.scratch = 0;
         self.scratch_samples = 0;
-        self.prev_scratch = 0;
+        self.prev_average = 0;
         self.deviation = 0;
     }
 }
@@ -362,7 +369,12 @@ impl SenseData {
             if data < self.stats.min {
                 self.stats.min = data;
             }
-            trace!("Reading: {}  Stats: {:?}", reading, self.stats);
+            trace!(
+                "Reading: {}  Result: {}  Stats: {:?}",
+                reading,
+                data,
+                self.stats
+            );
 
             // As soon as we have enough values accumulated, set magnet as detected in normal mode
             self.cal = CalibrationStatus::MagnetDetected;
@@ -403,8 +415,9 @@ impl SenseData {
             // Check calibration
             self.cal = self.check_calibration::<MNOK, MXOK, NS>(data);
             trace!(
-                "Reading: {}  Cal: {:?}  Stats: {:?}",
+                "Reading: {}  Result: {}  Cal: {:?}  Stats: {:?}",
                 reading,
+                data,
                 self.cal,
                 self.stats
             );

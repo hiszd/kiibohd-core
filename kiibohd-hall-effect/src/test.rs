@@ -59,6 +59,13 @@ fn setup_logging_lite() -> Result<(), LogError> {
 #[test]
 fn invalid_index() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -75,6 +82,13 @@ fn invalid_index() {
 #[test]
 fn not_ready() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let sensors = Sensors::<1>::new().unwrap();
@@ -92,6 +106,13 @@ fn not_ready() {
 #[test]
 fn deviation_check() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -118,6 +139,13 @@ fn deviation_check() {
 #[test]
 fn sensor_missing() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -148,6 +176,13 @@ fn sensor_missing() {
 #[test]
 fn sensor_broken() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -176,6 +211,13 @@ fn sensor_broken() {
 #[test]
 fn magnet_missing() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -282,6 +324,13 @@ fn magnet_calibrate<const U: usize>(sensors: &mut Sensors<U>) {
 #[test]
 fn magnet_detected() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -294,6 +343,13 @@ fn magnet_detected() {
 #[test]
 fn sensor_min_adjust() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -303,9 +359,9 @@ fn sensor_min_adjust() {
     magnet_check_normal::<1>(&mut sensors);
 
     // Send a lower value than the min calibration and make sure it was set
-    let old_min = sensors.get_data(0).unwrap().stats.min;
-    let val = old_min - MAX_DEVIATION as u16;
-    let calc_new_min = (val + old_min) / 2;
+    let prev_avg = sensors.get_data(0).unwrap().data.prev_average;
+    let val = prev_avg - (MAX_DEVIATION * 2) as u16;
+    let calc_new_min = (val + prev_avg) / 2;
 
     assert!(sensors
         .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
@@ -324,8 +380,8 @@ fn sensor_min_adjust() {
     }
     assert!(
         test,
-        "Unexpected state: {:?} != {} (old_min: {})",
-        state, val, old_min
+        "Unexpected state: {:?} != {} (prev_avg: {})",
+        state, val, prev_avg
     );
 
     // Check min calibration
@@ -341,6 +397,13 @@ fn sensor_min_adjust() {
 #[test]
 fn increase_decrease_flip() {
     setup_logging_lite().ok();
+    trace!(
+        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
+        MAX_DEVIATION,
+        MIN_OK_THRESHOLD,
+        MAX_OK_THRESHOLD,
+        NO_SENSOR_THRESHOLD
+    );
 
     // Allocate a single sensor
     let mut sensors = Sensors::<1>::new().unwrap();
@@ -353,7 +416,8 @@ fn increase_decrease_flip() {
 
     // Add two sensor samples (no deviation), a deviation higer than the current
     let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16 * 2;
-    let calc_val = (val + MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16) / 2;
+    let prev_avg = sensors.get_data(0).unwrap().data.prev_average;
+    let calc_val = (prev_avg + val) / 2;
 
     info!("Higher value: {} start (averaged: {})", val, calc_val);
     assert!(sensors
@@ -373,10 +437,9 @@ fn increase_decrease_flip() {
     }
     assert!(test, "Unexpected state: {:?} != {}", state, calc_val);
     info!("Higher value: {} end", val);
-    let prev_val = val;
 
     // Decrease input value, but by less than a deviation
-    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16 * 2 - MAX_DEVIATION as u16 / 2;
+    let val = calc_val - MAX_DEVIATION as u16 / 2;
     info!("Lower value (fail): {} start", val);
     assert!(sensors
         .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
@@ -388,17 +451,19 @@ fn increase_decrease_flip() {
             0, val,
         );
 
-    // We're expecting Ok(None) as the samples should be discarded
+    // We're expecting Ok(calc_val) as the samples should be discarded
     let mut test = false;
-    if let Ok(None) = state.clone() {
-        test = true;
+    if let Ok(Some(rval)) = state.clone() {
+        if rval.raw == calc_val {
+            test = true;
+        }
     }
     assert!(test, "Unexpected state: {:?}", state);
     info!("Lower value (fail): {} end", val);
 
     // Decrease input value, but by more than a deviation
-    let val = MIN_OK_THRESHOLD as u16 + MAX_DEVIATION as u16 - 1;
-    let calc_val = (val + prev_val) / 2;
+    let val = calc_val + MAX_DEVIATION as u16 - 1;
+    let calc_val = (val + calc_val) / 2;
     info!("Lower value (pass): {} start (averaged: {})", val, calc_val);
     assert!(sensors
         .add_test::<2, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(
@@ -415,10 +480,6 @@ fn increase_decrease_flip() {
             test = true;
         }
     }
-    assert!(
-        test,
-        "Unexpected state: {:?} != {} {}",
-        state, calc_val, prev_val
-    );
+    assert!(test, "Unexpected state: {:?} != {}", state, calc_val);
     info!("Lower value (pass): {} end", val);
 }
