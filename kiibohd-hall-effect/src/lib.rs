@@ -9,8 +9,8 @@
 
 #![no_std]
 
-mod rawlookup;
-mod test;
+//mod test; // TODO
+pub mod lookup;
 
 // ----- Crates -----
 
@@ -20,23 +20,108 @@ use heapless::Vec;
 #[cfg(not(feature = "defmt"))]
 use log::*;
 
-// TODO Use features to determine which lookup table to use
-use rawlookup::MODEL;
-
 // ----- Sense Data -----
+
+/// Indicates mode of the sensor
+/// Used to specify a different lookup table and data processing behaviour
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum SensorMode {
+    /// Run ADC in reduced precision mode to collect additional calibration data
+    /// Generally uses an alternate lookup table
+    Test(&'static lookup::Entry),
+    /// Low latency mode (usually the same as NormalMode)
+    LowLatency(&'static lookup::Entry),
+    /// Normal mode for ADC
+    Normal(&'static lookup::Entry),
+}
+
+impl SensorMode {
+    pub fn entry(&self) -> &lookup::Entry {
+        match self {
+            SensorMode::Test(entry) => entry,
+            SensorMode::LowLatency(entry) => entry,
+            SensorMode::Normal(entry) => entry,
+        }
+    }
+}
 
 /// Calibration status indicates if a sensor position is ready to send
 /// analysis for a particular key.
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum CalibrationStatus {
-    NotReady = 0,                 // Still trying to determine status (from power-on)
-    SensorMissing = 1,            // ADC value at 0
-    SensorBroken = 2, // Reading higher than ADC supports (invalid), or magnet is too strong
-    MagnetDetected = 3, // Magnet detected, min calibrated, positive range
-    MagnetWrongPoleOrMissing = 4, // Magnet detected, wrong pole direction
-    InvalidIndex = 5, // Invalid index
+    /// Still trying to determine status (from power-on)
+    /// Raw value must settle within a range before the sensor is considered ready
+    /// This range is determined by the ADC mode that is currently set
+    /// (e.g. 600-800 for at least 5 seconds)
+    NotReady = 0,
+    /// ADC value at 0 (test mode only)
+    SensorMissing = 1,
+    /// Reading higher than ADC supports (invalid), or magnet is too strong (test mode only)
+    SensorBroken = 2,
+    /// Sensor value low (not enough data to quantify further)
+    SensorLow = 6,
+    /// Magnet detected, min calibrated, positive range
+    MagnetDetected = 3,
+    /// Magnet detected, wrong pole direction (test mode only)
+    MagnetWrongPole = 4,
+    /// Invalid index
+    InvalidIndex = 5,
+}
+
+impl CalibrationStatus {
+    /// Update calibration status
+    /// Returns true if the sensor is ready/calibrated
+    pub fn update_calibration(&mut self, reading: u16, mode: SensorMode) -> bool {
+        let entry = mode.entry();
+        // Make sure reading isn't too low
+        if reading < entry.min_ok_value {
+            // Don't try to determine the true state, we'll do that later
+            *self = CalibrationStatus::NotReady;
+        }
+        self.is_calibrated()
+    }
+
+    /// Easy check whether or not the sensor is ready
+    pub fn is_calibrated(&self) -> bool {
+        matches!(self, CalibrationStatus::MagnetDetected)
+    }
+
+    /// Detailed calibration status
+    /// Returns a more detailed calibration status (takes a few more steps and is not necessary
+    /// during normal operation)
+    pub fn detailed_calibration(&self, data: &SenseData) -> CalibrationStatus {
+        match self {
+            CalibrationStatus::MagnetDetected => *self,
+            _ => {
+                match data.mode {
+                    // More detailed analysis due to additional ADC range
+                    SensorMode::Test(entry) => {
+                        if data.data.value == 0 {
+                            CalibrationStatus::SensorMissing
+                        } else if data.data.value > entry.max_ok_value {
+                            CalibrationStatus::SensorBroken
+                        } else if data.data.value < entry.min_ok_value {
+                            CalibrationStatus::MagnetWrongPole
+                        } else if data.data.value < entry.min_idle_value {
+                            CalibrationStatus::SensorLow
+                        } else {
+                            CalibrationStatus::NotReady
+                        }
+                    }
+                    // Simplified analysis due to optimized ADC range
+                    SensorMode::LowLatency(entry) | SensorMode::Normal(entry) => {
+                        if data.data.value < entry.min_idle_value {
+                            CalibrationStatus::SensorLow
+                        } else {
+                            CalibrationStatus::NotReady
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -47,6 +132,24 @@ pub enum SensorError {
     InvalidSensor(usize),
 }
 
+/// Records momentary push button events
+///
+/// Cycles can be converted to time by multiplying by the scan period (Matrix::period())
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum KeyState {
+    /// Passed activation point
+    On {
+        /// Cycles since the last state change
+        cycles_since_state_change: u32,
+    },
+    /// Passed deactivation point
+    Off {
+        /// Cycles since the last state change
+        cycles_since_state_change: u32,
+    },
+}
+
 /// Calculations:
 ///  d = linearized(adc sample) --> distance
 ///  v = (d - d_prev) / 1       --> velocity
@@ -54,48 +157,70 @@ pub enum SensorError {
 ///  j = (a - a_prev) / 3       --> jerk
 ///
 /// These calculations assume constant time delta of 1
-#[repr(C)]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SenseAnalysis {
-    pub raw: u16,          // Raw ADC reading
-    pub distance: i16,     // Distance value (lookup + min/max alignment)
-    pub velocity: i16,     // Velocity calculation (*)
-    pub acceleration: i16, // Acceleration calculation (*)
-    pub jerk: i16,         // Jerk calculation (*)
+    /// Threshold state
+    pub state: KeyState,
+    /// Distance value (lookup + min/max alignment)
+    pub distance: i16,
+    /// Velocity calculation (*)
+    pub velocity: i16,
+    /// Acceleration calculation (*)
+    pub acceleration: i16,
+    /// Jerk calculation (*)
+    pub jerk: i16,
 }
 
 impl SenseAnalysis {
     /// Using the raw value do calculations
-    /// Requires the previous analysis
-    pub fn new(raw: u16, data: &SenseData) -> SenseAnalysis {
-        // Do raw lookup (we've already checked the bounds)
-        let initial_distance = MODEL[raw as usize];
+    pub fn new(data: &SenseData) -> Self {
+        // Lookup distance
+        let entry = data.mode.entry();
+        let distance = entry.lookup(data.data.value, data.raw_offset);
 
-        /*
-        // Min/max adjustment
-        let distance_offset = match data.cal {
-            CalibrationStatus::MagnetDetected => {
-                // Subtract the min lookup
-                // Lookup table has negative values for unexpectedly
-                // small values (greater than sensor center)
-                MODEL[data.stats.min as usize]
+        // Update key state
+        let state = match data.analysis.state {
+            KeyState::On {
+                cycles_since_state_change,
+            } => {
+                if distance <= data.deactivation {
+                    // Key is now off
+                    KeyState::Off {
+                        cycles_since_state_change: 0,
+                    }
+                } else {
+                    // Key is still on
+                    KeyState::On {
+                        cycles_since_state_change: cycles_since_state_change.saturating_add(1),
+                    }
+                }
             }
-            _ => {
-                // Invalid reading
-                return SenseAnalysis::null();
+            KeyState::Off {
+                cycles_since_state_change,
+            } => {
+                if distance >= data.activation {
+                    // Key is now on
+                    KeyState::On {
+                        cycles_since_state_change: 0,
+                    }
+                } else {
+                    // Key is still off
+                    KeyState::Off {
+                        cycles_since_state_change: cycles_since_state_change.saturating_add(1),
+                    }
+                }
             }
         };
-        */
-        let distance_offset = MODEL[data.stats.min as usize];
-        let distance = initial_distance - distance_offset;
+
+        // Calculate velocity/acceleration/jerk
         let velocity = distance - data.analysis.distance; // / 1
         let acceleration = (velocity - data.analysis.velocity) / 2;
         // NOTE: To use jerk, the compile-time thresholds will need to be
         //       multiplied by 3 (to account for the missing / 3)
         let jerk = acceleration - data.analysis.acceleration;
         SenseAnalysis {
-            raw,
+            state,
             distance,
             velocity,
             acceleration,
@@ -106,7 +231,9 @@ impl SenseAnalysis {
     /// Null entry
     pub fn null() -> SenseAnalysis {
         SenseAnalysis {
-            raw: 0,
+            state: KeyState::Off {
+                cycles_since_state_change: u32::MAX,
+            },
             distance: 0,
             velocity: 0,
             acceleration: 0,
@@ -115,177 +242,81 @@ impl SenseAnalysis {
     }
 }
 
-/// Keeps track of the direction of the adc values
-/// The direction changes when the ADC exceeds the value of MAX_DEV in the opposite direction
-/// The scratch value is immediately updated when moving in the same direction.
-/// If the next value is in the opposite direction, the scratch value will only be updated if it
-/// exceeds MAX_DEV.
-/// This should greatly stabilize ADCs while still allowing for high sensitivity.
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-enum Direction {
-    Increase = 0,
-    Decrease = 1,
-}
-
 /// Stores incoming raw samples
-#[repr(C)]
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct RawData {
-    scratch: u32,
-    prev_average: u16,
-    deviation: i16,
-    scratch_samples: u8,
-    direction: Direction,
+    value: u16,
+    average: u16,
+    idle_count: u32,
 }
 
 impl RawData {
-    fn new() -> RawData {
-        RawData {
-            scratch: 0,
-            prev_average: 0,
-            deviation: 0,
-            scratch_samples: 0,
-            direction: Direction::Increase,
+    /// Create a RawData instance
+    pub fn new() -> Self {
+        Self {
+            value: 0,
+            average: 0,
+            idle_count: 0,
         }
     }
 
-    /// Adds to the internal scratch location
-    /// Designed to accumulate until a set number of readings added
-    /// SC: specifies the number of scratch samples until ready to average
-    ///     Should be a power of two (1, 2, 4, 8, 16...) for the compiler to
-    ///     optimize.
-    fn add<const SC: usize, const MAX_DEV: usize>(&mut self, reading: u16) -> Option<u16> {
-        // If the previous sample deviates more than MAX_DEV, then reject
-        // all the samples in the set. This is to work around ADC noise that can be
-        // difficult to filter out.
-        // In general this should be imperceptible to the user and give a more consistent
-        // response to events.
-        //
-        // Make sure we have an even number of samples, otherwise ignore the last one
-        if !(SC & 1 == 1 && self.scratch_samples == SC as u8 - 1) {
-            // Check if even or odd
-            // Even - Add to deviation
-            // Odd - Subtract from deviation
-            if self.scratch_samples & 1 == 0 {
-                // Even
-                self.deviation += reading as i16;
-            } else {
-                // Odd
-                self.deviation -= reading as i16;
-            }
-        }
+    /// Updates the raw value with a new reading.
+    /// - Updates the running average
+    /// - Increments the idle if average is within specified range
+    /// - If idle count exceeds the specified threshold, the average is returned
+    ///   This average is used to calibrate the minimum distance
+    pub fn update<const IDLE_LIMIT: usize>(&mut self, value: u16, mode: SensorMode) -> Option<u16> {
+        self.value = value;
+        // Update average
+        self.average = (self.average + value) / 2;
 
-        self.scratch += reading as u32;
-        self.scratch_samples += 1;
+        // Update idle count
+        let entry = mode.entry();
+        if self.average >= entry.min_idle_value && self.average <= entry.max_idle_value {
+            self.idle_count += 1;
+        } else {
+            self.idle_count = 0;
+        }
         trace!(
-            "Reading: {}  Sample: {}/{}",
-            reading,
-            self.scratch_samples,
-            SC as u8
+            "RawData::update: value: {}, average: {}, idle_count: {} ({}..{}:{})",
+            self.value,
+            self.average,
+            self.idle_count,
+            entry.min_idle_value,
+            entry.max_idle_value,
+            entry.sensor_zero,
         );
 
-        if self.scratch_samples == SC as u8 {
-            let mut cur_average: u16 = (self.scratch / SC as u32) as u16;
-            trace!("Averaging: {} / {} = {}", self.scratch, SC, cur_average);
-
-            // Check deviation, and ignore this sample set if it's too high
-            if SC > 1 && self.deviation.abs() > MAX_DEV as i16 {
-                // Reset scratch
-                self.scratch = 0;
-                self.scratch_samples = 0;
-                self.deviation = 0;
-                return None;
-            }
-
-            let change = cur_average as i32 - self.prev_average as i32;
-
-            // Check direction
-            match self.direction {
-                Direction::Increase => {
-                    if change < 0 {
-                        if change.abs() > MAX_DEV as i32 {
-                            // Direction changed
-                            self.direction = Direction::Decrease;
-                        } else {
-                            // Not enough change to change direction, so we use the previous
-                            // samples
-                            cur_average = self.prev_average;
-                        }
-                    }
-                }
-                Direction::Decrease => {
-                    if change > 0 {
-                        if change.abs() > MAX_DEV as i32 {
-                            // Direction changed
-                            self.direction = Direction::Increase;
-                        } else {
-                            // Not enough change to change direction, so we use the previous
-                            // samples
-                            cur_average = self.prev_average;
-                        }
-                    }
-                }
-            }
-
-            let val = if self.prev_average == 0 {
-                cur_average
-            } else {
-                // Average previous value if non-zero
-                let val = (cur_average + self.prev_average) / 2;
-                trace!(
-                    "Averaging prev: ({} + {}) / 2 = {}",
-                    cur_average,
-                    self.prev_average,
-                    val
-                );
-                val
-            };
-
-            self.prev_average = val;
-            self.scratch = 0;
-            self.scratch_samples = 0;
-            self.deviation = 0;
-            trace!("Result: {}", val);
-            Some(val)
+        // Return average if idle count exceeds threshold
+        if self.idle_count > IDLE_LIMIT as u32 {
+            Some(self.average)
         } else {
             None
         }
     }
 
+    /// Returns the current value
+    pub fn value(&self) -> u16 {
+        self.value
+    }
+
+    /// Returns the current average
+    pub fn average(&self) -> u16 {
+        self.average
+    }
+
     /// Reset data, used when transitioning between calibration and normal modes
-    fn reset(&mut self) {
-        self.scratch = 0;
-        self.scratch_samples = 0;
-        self.prev_average = 0;
-        self.deviation = 0;
+    pub fn reset(&mut self) {
+        self.value = 0;
+        self.average = 0;
+        self.idle_count = 0;
     }
 }
 
-/// Sense stats include statistically information about the sensor data
-#[repr(C)]
-#[derive(Clone, Debug)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub struct SenseStats {
-    pub min: u16,     // Minimum raw value (reset when out of calibration)
-    pub max: u16,     // Maximum raw value (reset when out of calibration)
-    pub samples: u32, // Total number of samples (does not reset)
-}
-
-impl SenseStats {
-    fn new() -> SenseStats {
-        SenseStats {
-            min: 0xFFFF,
-            max: 0x0000,
-            samples: 0,
-        }
-    }
-
-    /// Reset, resettable stats (e.g. min, max, but not samples)
-    fn reset(&mut self) {
-        self.min = 0xFFFF;
-        self.max = 0x0000;
+impl Default for RawData {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -327,155 +358,127 @@ impl SenseStats {
 /// A variety of thresholds are used during calibration and normal operating modes.
 /// These values are generics as there's no reason to store each of the thresholds at runtime for
 /// each sensor (wastes precious sram per sensor).
-///
-/// Calibration Mode:
-/// * MNOK: Min valid calibration (Wrong magnet direction; wrong pole, less than a specific value)
-/// * MXOK: Max valid calibration (Bad Sensor threshold; sensor is bad if reading is higher than this value)
-/// * NS: No sensor detected (less than a specific value)
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SenseData {
-    pub analysis: SenseAnalysis,
-    pub cal: CalibrationStatus,
-    pub data: RawData,
-    pub stats: SenseStats,
+    /// Computed lookup for the raw ADC data
+    analysis: SenseAnalysis,
+    /// Calibration status of the sensor
+    cal: CalibrationStatus,
+    /// Raw data tracking of the sensor
+    data: RawData,
+    /// Temperature/humidity compensation for the ADC->distance lookup
+    raw_offset: i16,
+    /// Processing mode + lookup table for ADC
+    mode: SensorMode,
+    /// Activation point (distance, push direction)
+    /// TODO - The logic doesn't handle negative distance values yet where activation is less than
+    /// deactivation.
+    activation: i16,
+    /// Deactivation point (distance, release direction)
+    deactivation: i16,
 }
 
 impl SenseData {
-    pub fn new() -> SenseData {
+    /// Create a new SenseData instance
+    /// - mode: Sensor mode
+    /// - activation: Activation point (distance, push direction)
+    /// - deactivation: Deactivation point (distance, release direction)
+    pub fn new(mode: SensorMode, activation: i16, deactivation: i16) -> SenseData {
         SenseData {
             analysis: SenseAnalysis::null(),
             cal: CalibrationStatus::NotReady,
             data: RawData::new(),
-            stats: SenseStats::new(),
+            raw_offset: 0, // Starts in NotReady mode, so this value is ignored
+            mode,
+            activation,
+            deactivation,
         }
     }
 
-    /// Acculumate a new sensor reading
-    /// Once the required number of samples is retrieved, do analysis
-    /// Analysis does a few more addition, subtraction and comparisions
-    /// so it's a more expensive operation.
-    /// Normal mode
-    fn add<const SC: usize, const MAX_DEV: usize>(
-        &mut self,
-        reading: u16,
-    ) -> Result<Option<&SenseAnalysis>, SensorError> {
-        // Add value to accumulator
-        if let Some(data) = self.data.add::<SC, MAX_DEV>(reading) {
-            // Check min/max values
-            if data > self.stats.max {
-                self.stats.max = data;
-            }
-            if data < self.stats.min {
-                self.stats.min = data;
-            }
-            trace!(
-                "Reading: {}  Result: {}  Stats: {:?}",
-                reading,
-                data,
-                self.stats
-            );
+    /// Add new sensor reading
+    /// Only returns a value once the sensor has been properly calibrated and is within
+    /// the expected range.
+    pub fn add<const IDLE_LIMIT: usize>(&mut self, reading: u16) -> Option<&SenseData> {
+        // Update raw data
+        if let Some(average) = self.data.update::<IDLE_LIMIT>(reading, self.mode) {
+            // New minimum value detected
+            // Due to temperature and humidity, the sensor may drift
+            //
+            // Calculate the offset from the pre-computed lookup table
+            let entry = self.mode.entry();
+            self.raw_offset = average as i16 - entry.sensor_zero as i16;
 
-            // As soon as we have enough values accumulated, set magnet as detected in normal mode
+            // When we have a new valid minimum value calibration is complete
             self.cal = CalibrationStatus::MagnetDetected;
-
-            // Calculate new analysis (requires previous results + min/max)
-            self.analysis = SenseAnalysis::new(data, self);
-            Ok(Some(&self.analysis))
-        } else {
-            Ok(None)
         }
-    }
 
-    /// Acculumate a new sensor reading
-    /// Once the required number of samples is retrieved, do analysis
-    /// Analysis does a few more addition, subtraction and comparisions
-    /// so it's a more expensive operation.
-    /// Test mode
-    fn add_test<
-        const SC: usize,
-        const MAX_DEV: usize,
-        const MNOK: usize,
-        const MXOK: usize,
-        const NS: usize,
-    >(
-        &mut self,
-        reading: u16,
-    ) -> Result<Option<&SenseAnalysis>, SensorError> {
-        // Add value to accumulator
-        if let Some(data) = self.data.add::<SC, MAX_DEV>(reading) {
-            // Check min/max values
-            if data > self.stats.max {
-                self.stats.max = data;
-            }
-            if data < self.stats.min {
-                self.stats.min = data;
-            }
-
-            // Check calibration
-            self.cal = self.check_calibration::<MNOK, MXOK, NS>(data);
-            trace!(
-                "Reading: {}  Result: {}  Cal: {:?}  Stats: {:?}",
-                reading,
-                data,
-                self.cal,
-                self.stats
-            );
-            match self.cal {
-                CalibrationStatus::MagnetDetected => {}
-                // Don't bother doing calculations if magnet+sensor isn't ready
-                _ => {
-                    // Reset min/max
-                    self.stats.reset();
-                    // Reset averaging
-                    self.data.reset();
-                    // Clear analysis, only set raw
+        // If sensor is calibrated compute SenseAnalysis
+        // Make sure the incoming value doesn't break the calibration
+        if self.cal.update_calibration(reading, self.mode) {
+            // Update analysis
+            self.analysis = SenseAnalysis::new(self);
+            Some(self)
+        } else {
+            // If key state was active before, deactivate it and send an event
+            match self.analysis.state {
+                KeyState::On { .. } => {
                     self.analysis = SenseAnalysis::null();
-                    self.analysis.raw = data;
-                    return Err(SensorError::CalibrationError(self.clone()));
+                    Some(self)
                 }
+                _ => None,
             }
+        }
+    }
 
-            // Calculate new analysis (requires previous results + min/max)
-            self.analysis = SenseAnalysis::new(data, self);
-            Ok(Some(&self.analysis))
+    /// Current sensor analysis
+    pub fn analysis(&self) -> Option<&SenseAnalysis> {
+        if self.cal.is_calibrated() {
+            Some(&self.analysis)
         } else {
-            Ok(None)
+            None
         }
     }
 
-    /// Update calibration state
-    /// Calibration is different depending on whether or not we've already been successfully
-    /// calibrated. Gain and offset are set differently depending on whether the sensor has been
-    /// calibrated. Uncalibrated sensors run at a lower gain to gather more details around voltage
-    /// limits. Wherease calibrated sensors run at higher gain (and likely an offset) to maximize
-    /// the voltage range of the desired sensor range.
-    /// NOTE: This implementation (currently) only works for a single magnet pole of a bipolar sensor.
-    fn check_calibration<const MNOK: usize, const MXOK: usize, const NS: usize>(
-        &self,
-        data: u16,
-    ) -> CalibrationStatus {
-        // Value too high, likely a bad sensor or bad soldering on the pcb
-        // Magnet may also be too strong.
-        if data > MXOK as u16 {
-            return CalibrationStatus::SensorBroken;
-        }
-        // No sensor detected
-        if data < NS as u16 {
-            return CalibrationStatus::SensorMissing;
-        }
-        // Wrong pole (or magnet may be too weak)
-        if data < MNOK as u16 {
-            return CalibrationStatus::MagnetWrongPoleOrMissing;
-        }
-
-        CalibrationStatus::MagnetDetected
+    /// Current sensor calibration status
+    pub fn calibration(&self) -> CalibrationStatus {
+        self.cal
     }
-}
 
-impl Default for SenseData {
-    fn default() -> Self {
-        SenseData::new()
+    /// Current raw sensor data
+    pub fn data(&self) -> &RawData {
+        &self.data
+    }
+
+    /// Raw offset value
+    pub fn raw_offset(&self) -> i16 {
+        self.raw_offset
+    }
+
+    /// Current sensor mode
+    pub fn mode(&self) -> SensorMode {
+        self.mode
+    }
+
+    /// Current activation point
+    pub fn activation(&self) -> i16 {
+        self.activation
+    }
+
+    /// Current deactivation point
+    pub fn deactivation(&self) -> i16 {
+        self.deactivation
+    }
+
+    /// Update activation/deactivation points
+    pub fn update_activation(&mut self, activation: i16, deactivation: i16) {
+        self.activation = activation;
+        self.deactivation = deactivation;
+    }
+
+    /// Change sensor mode
+    pub fn update_mode(&mut self, mode: SensorMode) {
+        self.mode = mode;
     }
 }
 
@@ -488,9 +491,19 @@ pub struct Sensors<const S: usize> {
 impl<const S: usize> Sensors<S> {
     /// Initializes full Sensor array
     /// Only fails if static allocation fails (very unlikely)
-    pub fn new() -> Result<Sensors<S>, SensorError> {
+    /// - mode: Sensor mode
+    /// - activation: Activation point (distance, push direction)
+    /// - deactivation: Deactivation point (distance, release direction)
+    pub fn new(
+        mode: SensorMode,
+        activation: i16,
+        deactivation: i16,
+    ) -> Result<Sensors<S>, SensorError> {
         let mut sensors = Vec::new();
-        if sensors.resize_default(S).is_err() {
+        if sensors
+            .resize(S, SenseData::new(mode, activation, deactivation))
+            .is_err()
+        {
             Err(SensorError::FailedToResize(S))
         } else {
             Ok(Sensors { sensors })
@@ -498,35 +511,14 @@ impl<const S: usize> Sensors<S> {
     }
 
     /// Add sense data for a specific sensor
-    pub fn add<const SC: usize, const MAX_DEV: usize>(
+    pub fn add<const IDLE_LIMIT: usize>(
         &mut self,
         index: usize,
         reading: u16,
-    ) -> Result<Option<&SenseAnalysis>, SensorError> {
+    ) -> Result<Option<&SenseData>, SensorError> {
         trace!("Index: {}  Reading: {}", index, reading);
         if index < self.sensors.len() {
-            self.sensors[index].add::<SC, MAX_DEV>(reading)
-        } else {
-            Err(SensorError::InvalidSensor(index))
-        }
-    }
-
-    /// Add sense data for a specific sensor
-    /// Test mode
-    pub fn add_test<
-        const SC: usize,
-        const MAX_DEV: usize,
-        const MNOK: usize,
-        const MXOK: usize,
-        const NS: usize,
-    >(
-        &mut self,
-        index: usize,
-        reading: u16,
-    ) -> Result<Option<&SenseAnalysis>, SensorError> {
-        trace!("Index: {}  Reading: {}", index, reading);
-        if index < self.sensors.len() {
-            self.sensors[index].add_test::<SC, MAX_DEV, MNOK, MXOK, NS>(reading)
+            Ok(self.sensors[index].add::<IDLE_LIMIT>(reading))
         } else {
             Err(SensorError::InvalidSensor(index))
         }
@@ -556,11 +548,16 @@ impl<const S: usize> Sensors<S> {
 
 #[cfg(feature = "kll-core")]
 mod converters {
-    use crate::{CalibrationStatus, SenseAnalysis, SenseData};
-    use heapless::Vec;
-    use kll_core::TriggerEvent;
+    #[cfg(feature = "defmt")]
+    use defmt::*;
+    #[cfg(not(feature = "defmt"))]
+    use log::*;
 
-    impl SenseAnalysis {
+    use crate::{CalibrationStatus, KeyState, SenseData, SensorMode};
+    use heapless::Vec;
+    use kll_core::layout::TriggerEventIterator;
+
+    impl SenseData {
         /// Convert SenseData to a TriggerEvent
         /// Criteria used to generate the event (an event may not be ready yet)
         /// - Distance movement must be non-zero (velocity)
@@ -571,45 +568,97 @@ mod converters {
         ///   * 2 samples for velocity
         ///   * 3 samples for acceleration
         ///   * 4 samples for jerk
-        pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {
-            let index: u16 = index as u16;
-            // Make sure there has been distance movement
-            if self.velocity != 0 || ignore_off {
-                Vec::from_slice(&[
-                    TriggerEvent::AnalogDistance {
-                        index,
-                        val: self.distance,
-                    },
-                    TriggerEvent::AnalogVelocity {
-                        index,
-                        val: self.velocity,
-                    },
-                    TriggerEvent::AnalogAcceleration {
-                        index,
-                        val: self.acceleration,
-                    },
-                    TriggerEvent::AnalogJerk {
-                        index,
-                        val: self.jerk,
-                    },
-                ])
-                .unwrap()
-            } else {
-                Vec::new()
-            }
-        }
-    }
+        ///
+        /// In LowLatency mode only PressHoldReleaseOff events are generated using the per key
+        /// activation point configuration
+        pub fn trigger_events<const MAX_EVENTS: usize>(
+            &self,
+            index: usize,
+            ignore_off: bool,
+        ) -> TriggerEventIterator<MAX_EVENTS> {
+            let mut events = Vec::new();
 
-    impl SenseData {
-        /// Conveniece conversion, uses earlier analysis
-        /// Also validates calibration status
-        pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {
-            // Validate calibration
-            if self.cal != CalibrationStatus::MagnetDetected {
-                Vec::new()
-            } else {
-                self.analysis.trigger_event(index, ignore_off)
+            // Only create events if the sensor is calibrated
+            if self.cal == CalibrationStatus::MagnetDetected {
+                // Handle on/off events
+                match self.analysis.state {
+                    KeyState::On {
+                        cycles_since_state_change,
+                    } => {
+                        if cycles_since_state_change == 0 {
+                            trace!("Reading: {} {:?}", index, self.analysis.state);
+                            events
+                                .push(kll_core::TriggerEvent::Switch {
+                                    state: kll_core::trigger::Phro::Press,
+                                    index: index as u16,
+                                    last_state: 0,
+                                })
+                                .unwrap();
+                        } else {
+                            events
+                                .push(kll_core::TriggerEvent::Switch {
+                                    state: kll_core::trigger::Phro::Hold,
+                                    index: index as u16,
+                                    last_state: cycles_since_state_change,
+                                })
+                                .unwrap();
+                        }
+                    }
+                    KeyState::Off {
+                        cycles_since_state_change,
+                    } => {
+                        if cycles_since_state_change == 0 {
+                            trace!("Reading: {} {:?}", index, self.analysis.state);
+                            events
+                                .push(kll_core::TriggerEvent::Switch {
+                                    state: kll_core::trigger::Phro::Release,
+                                    index: index as u16,
+                                    last_state: 0,
+                                })
+                                .unwrap();
+                        // Ignore off events unless ignore_off is set
+                        } else if !ignore_off {
+                            events
+                                .push(kll_core::TriggerEvent::Switch {
+                                    state: kll_core::trigger::Phro::Off,
+                                    index: index as u16,
+                                    last_state: cycles_since_state_change,
+                                })
+                                .unwrap();
+                        }
+                    }
+                }
+
+                // Handle analog events
+                match self.mode() {
+                    SensorMode::Test(_) | SensorMode::Normal(_) => {
+                        if self.analysis.velocity != 0 || ignore_off {
+                            events
+                                .extend_from_slice(&[
+                                    kll_core::TriggerEvent::AnalogDistance {
+                                        index: index as u16,
+                                        val: self.analysis.distance,
+                                    },
+                                    kll_core::TriggerEvent::AnalogVelocity {
+                                        index: index as u16,
+                                        val: self.analysis.velocity,
+                                    },
+                                    kll_core::TriggerEvent::AnalogAcceleration {
+                                        index: index as u16,
+                                        val: self.analysis.acceleration,
+                                    },
+                                    kll_core::TriggerEvent::AnalogJerk {
+                                        index: index as u16,
+                                        val: self.analysis.jerk,
+                                    },
+                                ])
+                                .unwrap()
+                        }
+                    }
+                    _ => {}
+                }
             }
+            TriggerEventIterator::new(events)
         }
     }
 }

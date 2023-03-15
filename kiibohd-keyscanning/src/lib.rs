@@ -1,5 +1,5 @@
 // Copyright 2021 Zion Koyl
-// Copyright 2021-2022 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -14,13 +14,8 @@ pub use self::state::{KeyState, State};
 use embedded_hal::digital::v2::{InputPin, IoPin, OutputPin, PinState};
 
 #[cfg(feature = "kll-core")]
-use heapless::Vec;
-#[cfg(feature = "kll-core")]
-use kll_core::TriggerEvent;
-
-#[cfg(feature = "kll-core")]
-pub trait KeyScanning {
-    fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4>;
+pub trait KeyScanning<const MAX_EVENTS: usize> {
+    fn generate_events(&self, index: usize) -> kll_core::layout::TriggerEventIterator<MAX_EVENTS>;
 }
 
 /// Records momentary push button events
@@ -275,9 +270,14 @@ impl<
 
 #[cfg(feature = "kll-core")]
 mod converters {
+    #[cfg(feature = "defmt")]
+    use defmt::*;
+    #[cfg(not(feature = "defmt"))]
+    use log::*;
+
     use crate::*;
     use heapless::Vec;
-    use kll_core::TriggerEvent;
+    use kll_core::layout::TriggerEventIterator;
 
     impl<
             C: OutputPin,
@@ -288,61 +288,75 @@ mod converters {
             const SCAN_PERIOD_US: u32,
             const DEBOUNCE_US: u32,
             const IDLE_MS: u32,
-        > KeyScanning for Matrix<C, R, CSIZE, RSIZE, MSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS>
+            const MAX_EVENTS: usize,
+        > KeyScanning<MAX_EVENTS> for Matrix<C, R, CSIZE, RSIZE, MSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS>
     {
         /// Convert matrix state into a TriggerEvent
-        fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
+        fn generate_events(&self, index: usize) -> TriggerEventIterator<MAX_EVENTS> {
             self.generate_key_event(index)
                 .unwrap()
-                .trigger_event(index, false)
+                .trigger_events(index, false)
         }
     }
 
     impl KeyEvent {
-        pub fn trigger_event(&self, index: usize, ignore_off: bool) -> Vec<TriggerEvent, 4> {
-            Vec::from_slice(&[match self {
+        pub fn trigger_events<const MAX_EVENTS: usize>(
+            &self,
+            index: usize,
+            ignore_off: bool,
+        ) -> TriggerEventIterator<MAX_EVENTS> {
+            let mut events = Vec::new();
+
+            // Handle on/off events
+            match self {
                 KeyEvent::On {
                     cycles_since_state_change,
                 } => {
                     if *cycles_since_state_change == 0 {
-                        defmt::trace!("Reading: {} {}", index, self);
-                        kll_core::TriggerEvent::Switch {
-                            state: kll_core::trigger::Phro::Press,
-                            index: index as u16,
-                            last_state: 0,
-                        }
+                        trace!("Reading: {} {}", index, self);
+                        events
+                            .push(kll_core::TriggerEvent::Switch {
+                                state: kll_core::trigger::Phro::Press,
+                                index: index as u16,
+                                last_state: 0,
+                            })
+                            .unwrap();
                     } else {
-                        kll_core::TriggerEvent::Switch {
-                            state: kll_core::trigger::Phro::Hold,
-                            index: index as u16,
-                            last_state: *cycles_since_state_change,
-                        }
+                        events
+                            .push(kll_core::TriggerEvent::Switch {
+                                state: kll_core::trigger::Phro::Hold,
+                                index: index as u16,
+                                last_state: *cycles_since_state_change,
+                            })
+                            .unwrap();
                     }
                 }
                 KeyEvent::Off {
-                    idle: _,
                     cycles_since_state_change,
+                    ..
                 } => {
                     if *cycles_since_state_change == 0 {
-                        defmt::trace!("Reading: {} {}", index, self);
-                        kll_core::TriggerEvent::Switch {
-                            state: kll_core::trigger::Phro::Release,
-                            index: index as u16,
-                            last_state: 0,
-                        }
+                        trace!("Reading: {} {}", index, self);
+                        events
+                            .push(kll_core::TriggerEvent::Switch {
+                                state: kll_core::trigger::Phro::Release,
+                                index: index as u16,
+                                last_state: 0,
+                            })
+                            .unwrap();
+                    // Ignore off events unless ignore_off is set
                     } else if !ignore_off {
-                        kll_core::TriggerEvent::Switch {
-                            state: kll_core::trigger::Phro::Off,
-                            index: index as u16,
-                            last_state: *cycles_since_state_change,
-                        }
-                    } else {
-                        // Ignoring the off state
-                        return Vec::new();
+                        events
+                            .push(kll_core::TriggerEvent::Switch {
+                                state: kll_core::trigger::Phro::Off,
+                                index: index as u16,
+                                last_state: *cycles_since_state_change,
+                            })
+                            .unwrap();
                     }
                 }
-            }])
-            .unwrap()
+            }
+            TriggerEventIterator::new(events)
         }
     }
 }

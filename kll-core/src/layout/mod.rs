@@ -1,4 +1,4 @@
-// Copyright 2021-2022 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -66,6 +66,24 @@ pub enum ProcessError {
 }
 
 // ----- Structs -----
+
+pub struct TriggerEventIterator<const MAX_EVENTS: usize> {
+    events: Vec<TriggerEvent, MAX_EVENTS>,
+}
+
+impl<const MAX_EVENTS: usize> TriggerEventIterator<MAX_EVENTS> {
+    pub fn new(events: Vec<TriggerEvent, MAX_EVENTS>) -> Self {
+        Self { events }
+    }
+}
+
+impl<const MAX_EVENTS: usize> Iterator for TriggerEventIterator<MAX_EVENTS> {
+    type Item = TriggerEvent;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.events.pop()
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -484,9 +502,12 @@ impl<
 
     /// Process off state lookups
     /// To maintain state use a callback function to evaluate input off states
-    pub fn process_off_state_lookups<const MAX_LAYER_LOOKUP_SIZE: usize>(
+    pub fn process_off_state_lookups<
+        const MAX_LAYER_LOOKUP_SIZE: usize,
+        const MAX_EVENTS: usize,
+    >(
         &mut self,
-        generate_event: &dyn Fn(usize) -> Vec<TriggerEvent, 4>,
+        generate_event: &dyn Fn(usize) -> TriggerEventIterator<MAX_EVENTS>,
     ) {
         let mut events: heapless::Vec<TriggerEvent, MAX_LAYER_LOOKUP_SIZE> = heapless::Vec::new();
         for lookup in &self.off_state_lookups {

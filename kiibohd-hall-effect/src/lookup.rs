@@ -1,12 +1,76 @@
-// Copyright 2021 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+// TODO This should be configurable using a feature once more lookup sizes are needed
+const LOOKUP_SIZE: usize = 4096;
+
+/// Entry for each lookup table
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub struct Entry {
+    /// Lookup table
+    /// Converts an ADC reading to a linearized distance. Must be used with a calibrated offset to
+    /// account for any temperature or humidity drift.
+    pub lookup: [i16; LOOKUP_SIZE],
+    /// Minimum valid ADC value that can be used with lookup
+    /// Not all sensors have a valid full range (i.e. wrong magnet polarity)
+    pub min_ok_value: u16,
+    /// Maximum valid ADC value that can be used with lookup
+    pub max_ok_value: u16,
+    /// Typical ADC value when no magnet is present
+    pub sensor_zero: u16,
+    /// Idle minimum
+    pub min_idle_value: u16,
+    /// Idle maximum
+    pub max_idle_value: u16,
+}
+
+impl Entry {
+    /// Lookup value using raw offset
+    ///
+    /// Use the min/max ok values to ensure the lookup value is within the valid range
+    /// Calibration takes care of min/max ok values
+    pub fn lookup(&self, value: u16, offset: i16) -> i16 {
+        // TODO We can probably avoid the min/max checks if we need to squeeze out more performance
+        let mut lookup_value = value as i16 + offset;
+        // If lookup value is negative, use lowest entry
+        if lookup_value < self.min_ok_value as i16 {
+            lookup_value = self.min_ok_value as i16;
+        // If lookup value is greater than max, use max entry
+        } else if lookup_value > self.max_ok_value as i16 {
+            lookup_value = self.max_ok_value as i16;
+        }
+        self.lookup[lookup_value as usize]
+    }
+}
+
+/// Default lookup for Silo Switches (atsam4s/Keystone)
+/// TODO - measurements
+pub const SILO_ATSAM4S_LC605_GAIN_4X: Entry = Entry {
+    lookup: [0; LOOKUP_SIZE],
+    min_ok_value: 123,
+    max_ok_value: 1234,
+    sensor_zero: 40,
+    min_idle_value: 145,
+    max_idle_value: 200,
+};
+
+pub const SILO_ATSAM4S_LC605_GAIN_2X: Entry = Entry {
+    lookup: [0; LOOKUP_SIZE],
+    min_ok_value: 123,
+    max_ok_value: 1234,
+    sensor_zero: 40,
+    min_idle_value: 145,
+    max_idle_value: 200,
+};
+
 /// Raw lookup table
-pub const MODEL: [i16; 4096] = [
+pub const RAW_MODEL: [i16; 4096] = [
     -2047, -2046, -2045, -2044, -2043, -2042, -2041, -2040, -2039, -2038, -2037, -2036, -2035,
     -2034, -2033, -2032, -2031, -2030, -2029, -2028, -2027, -2026, -2025, -2024, -2023, -2022,
     -2021, -2020, -2019, -2018, -2017, -2016, -2015, -2014, -2013, -2012, -2011, -2010, -2009,

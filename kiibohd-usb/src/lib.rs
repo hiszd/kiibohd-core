@@ -90,6 +90,15 @@ pub enum LedState {
     Deactivate(u8),
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum UsbState {
+    /// HID Lock LED Activates
+    Activate(u8),
+    /// HID Lock LED Deactivates
+    Deactivate(u8),
+}
+
 /// USB HID Combination Interface
 ///
 /// Handles creation and management of multiple USB HID interfaces through SPSC queues.

@@ -8,7 +8,8 @@
 #![no_std]
 
 use embedded_hal::digital::v2::OutputPin;
-use kiibohd_hall_effect::{SenseAnalysis, SenseData, SensorError, Sensors};
+pub use kiibohd_hall_effect::{lookup, SensorMode};
+use kiibohd_hall_effect::{SenseData, SensorError, Sensors};
 
 /// Handles strobing the Hall Effect sensor matrix
 /// ADC reading is handled separately as the current embedded-hal doesn't work
@@ -52,8 +53,13 @@ pub struct Matrix<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const IN
 impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: bool>
     Matrix<C, CSIZE, MSIZE, INVERT_STROBE>
 {
-    pub fn new(cols: [C; CSIZE]) -> Result<Self, SensorError> {
-        let sensors = Sensors::new()?;
+    pub fn new(
+        cols: [C; CSIZE],
+        mode: SensorMode,
+        activation: i16,
+        deactivation: i16,
+    ) -> Result<Self, SensorError> {
+        let sensors = Sensors::new(mode, activation, deactivation)?;
         let res = Self {
             cols,
             cur_strobe: CSIZE - 1,
@@ -117,17 +123,17 @@ impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: 
 
     /// Record ADC Hall Effect reading for the given the current row/sense index
     /// The sense index is usually 0-5, though it depends on the typical setup
-    /// SC: Sample Count - How many samples before computing an analysis for a given index
-    /// MAX_DEV: Maximum deviation between samples in the same iteration (defined by SC)
-    pub fn record<const SC: usize, const MAX_DEV: usize>(
+    /// IDLE_LIMIT - Number of samples before considering the sensor idle (within the configured
+    /// range)
+    pub fn record<const IDLE_LIMIT: usize>(
         &mut self,
         index: usize,
         value: u16,
-    ) -> Result<Option<&SenseAnalysis>, SensorError> {
-        self.sensors.add::<SC, MAX_DEV>(index, value)
+    ) -> Result<Option<&SenseData>, SensorError> {
+        self.sensors.add::<IDLE_LIMIT>(index, value)
     }
 
-    /// Return current SenseAnalysis for a given index
+    /// Return current SenseData for a given index
     pub fn state(&self, index: usize) -> Option<Result<&SenseData, SensorError>> {
         if index >= self.sensors.len() {
             None
@@ -142,22 +148,23 @@ mod converters {
     use crate::{Matrix, OutputPin};
     use heapless::Vec;
     use kiibohd_keyscanning::KeyScanning;
-    use kll_core::TriggerEvent;
+    use kll_core::layout::TriggerEventIterator;
 
-    impl<C: OutputPin, const CSIZE: usize, const MSIZE: usize, const INVERT_STROBE: bool>
-        KeyScanning for Matrix<C, CSIZE, MSIZE, INVERT_STROBE>
+    impl<
+            C: OutputPin,
+            const CSIZE: usize,
+            const MSIZE: usize,
+            const INVERT_STROBE: bool,
+            const MAX_EVENTS: usize,
+        > KeyScanning<MAX_EVENTS> for Matrix<C, CSIZE, MSIZE, INVERT_STROBE>
     {
         /// Generate event from SenseData
         /// Useful when trying to determine if a key has not been pressed
-        fn generate_event(&self, index: usize) -> Vec<TriggerEvent, 4> {
-            if let Some(state) = self.state(index) {
-                if let Ok(data) = state {
-                    data.trigger_event(index, true)
-                } else {
-                    Vec::new()
-                }
+        fn generate_events(&self, index: usize) -> TriggerEventIterator<MAX_EVENTS> {
+            if let Some(Ok(data)) = self.state(index) {
+                data.trigger_events::<MAX_EVENTS>(index, true)
             } else {
-                Vec::new()
+                TriggerEventIterator::new(Vec::new())
             }
         }
     }
