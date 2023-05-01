@@ -10,18 +10,18 @@ keywords = ["no-std", "usb", "hid", "embedded", "keyboard"]
 categories = ["embedded", "no-std"]
 
 [dependencies]
-alphanumeric-sort   = "1.4"
+alphanumeric-sort   = "1.5"
 clap                = { version = "3.2", features = ["derive"] }
 derive-object-merge = "0.1.0-alpha1"
 enum-utils          = "0.1"
 kll-core            = { version = "0.1", path = "../kll-core" }
 layouts-rs          = "0.1"
-log                 = { version = "^0.4" }
+log                 = { version = "0.4" }
 object-merge        = "0.1.0-alpha1"
-pest                = { version = "2.4", features = ["pretty-print"] }
+pest                = { version = "2.6", features = ["pretty-print"] }
 pest_consume        = "1.1"
-pest_derive         = "2.4"
+pest_derive         = "2.6"
 
 
 [dev-dependencies]
-flexi_logger    = "0.24"
+flexi_logger    = "0.25"
