@@ -1,4 +1,4 @@
-// Copyright 2021-2022 Jacob Alexander
+// Copyright 2021-2023 Jacob Alexander
 //
 // Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
 // http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
@@ -6,7 +6,6 @@
 // copied, modified, or distributed except according to those terms.
 
 #![no_std]
-#![feature(const_ptr_read)]
 #![feature(let_chains)]
 
 #[macro_use]
