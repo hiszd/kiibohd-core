@@ -5,7 +5,7 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
-use crate::types::{Key, TriggerType};
+use crate::types::{Key, ResultCapabilitiesList, TriggerConditionList, TriggerType};
 use crate::{KllGroups, KllState};
 use layouts_rs::Layouts;
 use log::*;
@@ -16,9 +16,10 @@ use std::path::Path;
 
 mod test;
 
-/// Key: (trigger_guide, result_guide)
+/// Key: (trigger_condition_guide, result_capability_guide)
 /// Value: (trigger_pos, result_pos, trigger_result_map pos)
-type TriggerResultHash<'a> = HashMap<(Vec<u8>, Vec<u8>), (usize, usize, usize)>;
+type TriggerResultHash =
+    HashMap<(TriggerConditionList, ResultCapabilitiesList), (usize, usize, usize)>;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -26,7 +27,7 @@ pub struct KllCoreData<'a> {
     layers: Vec<KllState<'a>>,
     pub trigger_hash: HashMap<Vec<u8>, usize>,
     pub result_hash: HashMap<Vec<u8>, usize>,
-    pub trigger_result_hash: TriggerResultHash<'a>,
+    pub trigger_result_hash: TriggerResultHash,
     pub layer_lookup_hash: HashMap<(u8, u8, u16), Vec<u16>>,
     pub trigger_guides: Vec<u8>,
     pub result_guides: Vec<u8>,
@@ -59,6 +60,7 @@ impl<'a> KllCoreData<'a> {
 
             for (trigger_list, result_list) in layer.trigger_result_lists() {
                 let trigger_guide = trigger_list.kll_core_guide();
+                let trigger_condition_guide = trigger_list.kll_core_condition_guide();
                 // Determine if trigger guide has already been added
                 let trigger_pos =
                     match trigger_hash.try_insert(trigger_guide.clone(), trigger_guides.len()) {
@@ -70,7 +72,8 @@ impl<'a> KllCoreData<'a> {
                     };
 
                 let result_guide = result_list.kll_core_guide(layouts);
-                trace!("result_guide1: {:?}", result_guide);
+                let result_capability_guide =
+                    result_list.kll_core_capability_guide(layouts);
                 // Determine if result guide has already been added
                 let result_pos =
                     match result_hash.try_insert(result_guide.clone(), result_guides.len()) {
@@ -86,7 +89,7 @@ impl<'a> KllCoreData<'a> {
                 // and the trigger_result_map index position (needed for the layer lookup)
                 if trigger_result_hash
                     .try_insert(
-                        (trigger_guide, result_guide),
+                        (trigger_condition_guide, result_capability_guide),
                         (trigger_pos, result_pos, trigger_result_map.len()),
                     )
                     .is_ok()
@@ -98,12 +101,13 @@ impl<'a> KllCoreData<'a> {
 
             // Iterate again to build the necessary layer lookup
             for (trigger_list, result_list) in layer.trigger_result_lists() {
-                let trigger_guide = trigger_list.kll_core_guide();
-                let result_guide = result_list.kll_core_guide(layouts);
+                let trigger_condition_guide = trigger_list.kll_core_condition_guide();
+                let result_capability_guide =
+                    result_list.kll_core_capability_guide(layouts);
 
                 // Lookup position in trigger:result lookup
                 let (_, _, trigger_result_pos) =
-                    trigger_result_hash[&(trigger_guide, result_guide)];
+                    trigger_result_hash[&(trigger_condition_guide, result_capability_guide)];
 
                 for trigger in trigger_list.iter() {
                     // Determine type and index

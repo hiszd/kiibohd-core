@@ -69,6 +69,10 @@ impl<'a> fmt::Display for Mapping<'a> {
     }
 }
 
+/// Intermediate data structure used as a hashable key
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TriggerConditionList(pub Vec<Vec<kll_core::TriggerCondition>>);
+
 #[derive(Debug, Clone)]
 pub struct TriggerList<'a>(pub Vec<Vec<Trigger<'a>>>);
 
@@ -78,6 +82,9 @@ impl<'a> TriggerList<'a> {
     }
 
     /// Converts the TriggerList into a kll-core trigger guide
+    /// NOTE: The result of this type is *not* safely hashable
+    ///       as the binary format can change due to internal rust
+    ///       behaviour. Please use kll_core_capability_guide instead.
     pub fn kll_core_guide(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         for combo in &self.0 {
@@ -93,6 +100,21 @@ impl<'a> TriggerList<'a> {
         // Push final 0-length combo to indicate sequence has finished
         buf.push(0);
         buf
+    }
+
+    /// Converts the TriggerList into a kll-core result capability guide
+    /// This type is safely hashable
+    pub fn kll_core_condition_guide(&self) -> TriggerConditionList {
+        let mut sequence_buf = Vec::new();
+        for combo in &self.0 {
+            let mut combo_buf = Vec::new();
+            // Push each combo element
+            for elem in combo {
+                combo_buf.push(elem.kll_core_condition());
+            }
+            sequence_buf.push(combo_buf);
+        }
+        TriggerConditionList(sequence_buf)
     }
 
     fn implied_state(&self) -> Option<Vec<Self>> {
@@ -135,6 +157,10 @@ impl<'a> fmt::Display for TriggerList<'a> {
     }
 }
 
+/// Intermediate data structure used as a hashable key
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ResultCapabilitiesList(pub Vec<Vec<kll_core::Capability>>);
+
 #[derive(Debug, Clone)]
 pub struct ResultList<'a>(pub Vec<Vec<Action<'a>>>);
 
@@ -144,6 +170,9 @@ impl<'a> ResultList<'a> {
     }
 
     /// Converts the ResultList into a kll-core result guide
+    /// NOTE: The result of this type is *not* safely hashable
+    ///       as the binary format can change due to internal rust
+    ///       behaviour. Please use kll_core_capability_guide instead.
     pub fn kll_core_guide(&self, layouts: &mut Layouts) -> Vec<u8> {
         let mut buf = Vec::new();
         for combo in &self.0 {
@@ -159,6 +188,21 @@ impl<'a> ResultList<'a> {
         // Push final 0-length combo to indicate sequence has finished
         buf.push(0);
         buf
+    }
+
+    /// Converts the ResultList into a kll-core result capability guide
+    /// This type is safely hashable
+    pub fn kll_core_capability_guide(&self, layouts: &mut Layouts) -> ResultCapabilitiesList {
+        let mut sequence_buf = Vec::new();
+        for combo in &self.0 {
+            let mut combo_buf = Vec::new();
+            // Push each combo element
+            for elem in combo {
+                combo_buf.push(elem.kll_core_condition(layouts));
+            }
+            sequence_buf.push(combo_buf);
+        }
+        ResultCapabilitiesList(sequence_buf)
     }
 
     fn implied_state(&self) -> Option<Vec<Self>> {
