@@ -144,7 +144,7 @@ impl<'a> ResultList<'a> {
     }
 
     /// Converts the ResultList into a kll-core result guide
-    pub fn kll_core_guide(&self, layouts: Layouts) -> Vec<u8> {
+    pub fn kll_core_guide(&self, layouts: &mut Layouts) -> Vec<u8> {
         let mut buf = Vec::new();
         for combo in &self.0 {
             // Push the length of the combo
@@ -152,7 +152,7 @@ impl<'a> ResultList<'a> {
             // Push each combo element
             for elem in combo {
                 unsafe {
-                    buf.extend_from_slice(elem.kll_core_condition(layouts.clone()).bytes());
+                    buf.extend_from_slice(elem.kll_core_condition(layouts).bytes());
                 }
             }
         }
@@ -792,7 +792,7 @@ pub struct Action<'a> {
 
 impl<'a> Action<'a> {
     /// Converts to a kll-core Capability definition
-    pub fn kll_core_condition(&self, mut layouts: Layouts) -> kll_core::Capability {
+    pub fn kll_core_condition(&self, layouts: &mut Layouts) -> kll_core::Capability {
         // State must be defined
         // generate_state_scheduling() function can be used to compute if
         // it's not defined.

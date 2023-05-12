@@ -55,12 +55,12 @@ fn result() {
     let test = fs::read_to_string("examples/kllcoretest.kll").unwrap();
     let result = KllFile::from_str(&test);
     let state = result.unwrap().into_struct();
-    let layouts = Layouts::from_dir(PathBuf::from("layouts"));
+    let mut layouts = Layouts::from_dir(PathBuf::from("layouts"));
 
     // Generate result guides
     let mut result_guides = Vec::new();
     for result_list in state.result_lists() {
-        let mut guide = result_list.kll_core_guide(layouts.clone());
+        let mut guide = result_list.kll_core_guide(&mut layouts);
         result_guides.append(&mut guide);
     }
 
@@ -72,7 +72,7 @@ fn trigger_result() {
     let test = fs::read_to_string("examples/kllcoretest.kll").unwrap();
     let result = KllFile::from_str(&test);
     let state = result.unwrap().into_struct();
-    let layouts = Layouts::from_dir(PathBuf::from("layouts"));
+    let mut layouts = Layouts::from_dir(PathBuf::from("layouts"));
 
     // Trigger and Result deduplication hashmaps
     let mut trigger_hash = HashMap::new();
@@ -97,7 +97,7 @@ fn trigger_result() {
             Err(err) => *err.entry.get(),
         };
 
-        let mut result_guide = result_list.kll_core_guide(layouts.clone());
+        let mut result_guide = result_list.kll_core_guide(&mut layouts);
         // Determine if result guide has already been added
         let result_pos = match result_hash.try_insert(result_guide.clone(), result_guide.len()) {
             Ok(pos) => {
@@ -129,8 +129,8 @@ fn layer_lookup_simple() {
     let state = result.unwrap().into_struct();
     let mut layers = vec![state];
     dbg!(layers.clone());
-    let layouts = Layouts::from_dir(PathBuf::from("layouts"));
-    let kdata = KllCoreData::new(&mut layers, layouts);
+    let mut layouts = Layouts::from_dir(PathBuf::from("layouts"));
+    let kdata = KllCoreData::new(&mut layers, &mut layouts);
 
     // TODO - Generate loop conditions using compiler
     let loop_condition_lookup: &[u32] = &[0];
@@ -252,10 +252,10 @@ fn keystone_basemap_rust() {
     let state = result.unwrap().into_struct();
     let mut layers = vec![state];
     dbg!(layers.clone());
-    let layouts = Layouts::from_dir(PathBuf::from("layouts"));
-    let kdata = KllCoreData::new(&mut layers, layouts.clone());
+    let mut layouts = Layouts::from_dir(PathBuf::from("layouts"));
+    let kdata = KllCoreData::new(&mut layers, &mut layouts);
 
     const LAYOUT_SIZE: usize = 128;
-    let kval = KllCoreValidation::<LAYOUT_SIZE>::new(&kdata, layers, layouts);
+    let mut kval = KllCoreValidation::<LAYOUT_SIZE>::new(&kdata, layers, layouts);
     kval.validate();
 }

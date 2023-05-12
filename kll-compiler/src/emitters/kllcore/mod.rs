@@ -18,7 +18,7 @@ mod test;
 
 /// Key: (trigger_guide, result_guide)
 /// Value: (trigger_pos, result_pos, trigger_result_map pos)
-type TriggerResultHash = HashMap<(Vec<u8>, Vec<u8>), (usize, usize, usize)>;
+type TriggerResultHash<'a> = HashMap<(Vec<u8>, Vec<u8>), (usize, usize, usize)>;
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -26,7 +26,7 @@ pub struct KllCoreData<'a> {
     layers: Vec<KllState<'a>>,
     pub trigger_hash: HashMap<Vec<u8>, usize>,
     pub result_hash: HashMap<Vec<u8>, usize>,
-    pub trigger_result_hash: TriggerResultHash,
+    pub trigger_result_hash: TriggerResultHash<'a>,
     pub layer_lookup_hash: HashMap<(u8, u8, u16), Vec<u16>>,
     pub trigger_guides: Vec<u8>,
     pub result_guides: Vec<u8>,
@@ -36,7 +36,7 @@ pub struct KllCoreData<'a> {
 
 impl<'a> KllCoreData<'a> {
     /// Given KllState layers, generate datastructures for kll-core
-    pub fn new(layers: &mut [KllState<'a>], layouts: Layouts) -> Self {
+    pub fn new(layers: &mut [KllState<'a>], layouts: &mut Layouts) -> Self {
         // Trigger and Result deduplication hashmaps
         let mut trigger_hash = HashMap::new();
         let mut result_hash = HashMap::new();
@@ -69,7 +69,8 @@ impl<'a> KllCoreData<'a> {
                         Err(err) => *err.entry.get(),
                     };
 
-                let result_guide = result_list.kll_core_guide(layouts.clone());
+                let result_guide = result_list.kll_core_guide(layouts);
+                trace!("result_guide1: {:?}", result_guide);
                 // Determine if result guide has already been added
                 let result_pos =
                     match result_hash.try_insert(result_guide.clone(), result_guides.len()) {
@@ -85,7 +86,7 @@ impl<'a> KllCoreData<'a> {
                 // and the trigger_result_map index position (needed for the layer lookup)
                 if trigger_result_hash
                     .try_insert(
-                        (trigger_guide.clone(), result_guide),
+                        (trigger_guide, result_guide),
                         (trigger_pos, result_pos, trigger_result_map.len()),
                     )
                     .is_ok()
@@ -98,7 +99,7 @@ impl<'a> KllCoreData<'a> {
             // Iterate again to build the necessary layer lookup
             for (trigger_list, result_list) in layer.trigger_result_lists() {
                 let trigger_guide = trigger_list.kll_core_guide();
-                let result_guide = result_list.kll_core_guide(layouts.clone());
+                let result_guide = result_list.kll_core_guide(layouts);
 
                 // Lookup position in trigger:result lookup
                 let (_, _, trigger_result_pos) =
@@ -227,7 +228,7 @@ pub fn verify(_groups: &KllGroups) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn write(file: &Path, groups: &KllGroups, layouts: Layouts) {
+pub fn write(file: &Path, groups: &KllGroups, layouts: &mut Layouts) {
     // TODO Merge layouts correctly
     let mut layers = groups.base.clone();
     //let layers = &groups.default;
@@ -268,7 +269,7 @@ impl<'a, const LAYOUT_SIZE: usize> KllCoreValidation<'a, LAYOUT_SIZE> {
         }
     }
 
-    pub fn validate(&self) {
+    pub fn validate(&mut self) {
         // Initialize LayerState
         const STATE_SIZE: usize = 256;
         const MAX_LAYERS: usize = 2;
@@ -372,7 +373,7 @@ impl<'a, const LAYOUT_SIZE: usize> KllCoreValidation<'a, LAYOUT_SIZE> {
                         trace!("r elem: {:?}", elem);
 
                         // Convert to Capability
-                        let cap = elem.kll_core_condition(self.layouts.clone());
+                        let cap = elem.kll_core_condition(&mut self.layouts);
                         trace!("r cap: {:?}", cap);
 
                         // Convert to CapabilityRun
