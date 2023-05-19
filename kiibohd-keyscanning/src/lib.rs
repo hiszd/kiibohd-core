@@ -289,7 +289,8 @@ mod converters {
             const DEBOUNCE_US: u32,
             const IDLE_MS: u32,
             const MAX_EVENTS: usize,
-        > KeyScanning<MAX_EVENTS> for Matrix<C, R, CSIZE, RSIZE, MSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS>
+        > KeyScanning<MAX_EVENTS>
+        for Matrix<C, R, CSIZE, RSIZE, MSIZE, SCAN_PERIOD_US, DEBOUNCE_US, IDLE_MS>
     {
         /// Convert matrix state into a TriggerEvent
         fn generate_events(&self, index: usize) -> TriggerEventIterator<MAX_EVENTS> {
