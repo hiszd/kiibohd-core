@@ -5,7 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.3 (2023-05-19)
+
+### New Features
+
+ - <csr-id-d3191fc2c5ab90fc125c155554569b083a6a1545/> Revamp kiibohd-hall-effect
+   - Different modes
+     * Normal (best precision, additional processing)
+     * Low-latency mode (best precision, optimized for latency)
+     * Test mode (widest range, lower precision)
+   - Remove C compatibility (no longer planned)
+   - On/off event generator (primilarily for low-latency mode)
+   - No more sample averaging
+     * Only use averaging when deciding when to recalibrate
+   - Recalibrate within a specified range after a period of stability is
+     detected
+     * Allows for per-key temperature and humidity stability
+     * Can dynamically adjust for new switches (different magnetic
+       strength)
+   - While not supported, test mode does support detecting magnet polarity
+     * Per-key modes are not supported (as the ADC will need to switch per
+       strobe and this may involve recalibration, which is slow)
+   - Add TriggerEventIterator
+     * Easier interface to allow to generate N number of trigger events
+       from a single call (instead of using a fixed size vector)
+   - Add Activate/Deactive USB HID LED states
+ - <csr-id-2fa2b8cd1b063f9bae2b2d1656f57b312788ea45/> Directional ADC value filtering
+   - Only update values immediately in the current direction of the filter
+     (any value)
+   - Opposite direction values (i.e. 400 then 390) must be a difference of at least MAX_DEV
+     otherwise the samples in the set will be ignored/disregarded
+   - If the difference is large enough, change the direction of the filter
+   - This should greatly reduce ADC value movement, while still giving
+     excellent sensitivity in the desired direction
+ - <csr-id-44d34a802706ba1115b104c242ca4db48eb37547/> Support for ADC sample deviation exclusion
+   - For ADCs that support multiple samples at a specific instance compare
+     each of the samples against a set deviation
+   - If the deviation between the samples is too high, reject all the
+     samples
+   - This helps with spurious ADC noise and smooths out the resulting data
+     used for analysis
+   - Generally this should be infrequent and imperceptible to the user
+
+### Bug Fixes
+
+ - <csr-id-8250b4ee70829c403266ac9392a5678bbb73bcef/> Update kiibohd-hid-io changelog
+ - <csr-id-d35b8681c506c03f37aa5db90fb1f0c8e71a3faf/> Inconsistent hash key
+   - The binary format that kll_core generates is not consistent when it
+     comes to unused packing bytes.
+     This means that using Vec<u8> of that TriggerList (or ResultList) may
+     not be consistent between usages in different functions (or
+     iterations).
+   - To fix this, create a hash key safe version of the trigger (and
+     release) guides
+   - This doesn't effect kll at runtime as the padding bytes are ignored
+ - <csr-id-b5eda36360794b261d3bb03430d3a615d4cf1525/> kll-compiler - Reduce variable clones
+   - No need to keep multiple copies in memory
+ - <csr-id-7a166007b9028882297472aa7143641cca178096/> const_ptr_read now stable
+ - <csr-id-03c1db16dde4618a7c778c2180aa1f8ea948297d/> Dependency updates for kll-core and kll-compiler
+ - <csr-id-bef7bcb06d45e09db02e199451432509ab05e331/> Update averaging to use the previous value instead of scratch samples
+   - Using the previous computed value instead of the previous scratch
+     samples reduces sample bounce (decaying filter)
+ - <csr-id-ed512c548d08b009fe34d4c638521a2accb2ce12/> Cleanup CHANGELOGs for cargo smart-release
+ - <csr-id-2265b9977161272386034d1550b73a7ec32334d2/> Upgrade byteorder and heapless
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 14 commits contributed to the release over the course of 170 calendar days.
+ - 170 days passed between releases.
+ - 11 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release kiibohd-hid-io v0.1.5, kiibohd-usb v0.1.6 ([`4538c36`](https://github.com/kiibohd/kiibohd-core/commit/4538c3688d070fcbb0b3b1a5ade481016b7e5e27))
+    - Update kiibohd-hid-io changelog ([`8250b4e`](https://github.com/kiibohd/kiibohd-core/commit/8250b4ee70829c403266ac9392a5678bbb73bcef))
+    - Release kll-core v0.1.8, kiibohd-hall-effect v0.2.0, kiibohd-keyscanning v0.1.4, kiibohd-hall-effect-keyscanning v0.2.0, safety bump kiibohd-hall-effect-keyscanning v0.2.0 ([`e15da97`](https://github.com/kiibohd/kiibohd-core/commit/e15da97be5b16e0298a22176486430ebce069c1c))
+    - Inconsistent hash key ([`d35b868`](https://github.com/kiibohd/kiibohd-core/commit/d35b8681c506c03f37aa5db90fb1f0c8e71a3faf))
+    - Kll-compiler - Reduce variable clones ([`b5eda36`](https://github.com/kiibohd/kiibohd-core/commit/b5eda36360794b261d3bb03430d3a615d4cf1525))
+    - Const_ptr_read now stable ([`7a16600`](https://github.com/kiibohd/kiibohd-core/commit/7a166007b9028882297472aa7143641cca178096))
+    - Dependency updates for kll-core and kll-compiler ([`03c1db1`](https://github.com/kiibohd/kiibohd-core/commit/03c1db16dde4618a7c778c2180aa1f8ea948297d))
+    - Revamp kiibohd-hall-effect ([`d3191fc`](https://github.com/kiibohd/kiibohd-core/commit/d3191fc2c5ab90fc125c155554569b083a6a1545))
+    - Update averaging to use the previous value instead of scratch samples ([`bef7bcb`](https://github.com/kiibohd/kiibohd-core/commit/bef7bcb06d45e09db02e199451432509ab05e331))
+    - Directional ADC value filtering ([`2fa2b8c`](https://github.com/kiibohd/kiibohd-core/commit/2fa2b8cd1b063f9bae2b2d1656f57b312788ea45))
+    - Support for ADC sample deviation exclusion ([`44d34a8`](https://github.com/kiibohd/kiibohd-core/commit/44d34a802706ba1115b104c242ca4db48eb37547))
+    - Release is31fl3743b v0.1.3, kll-core v0.1.7, kiibohd-hall-effect v0.1.3, kiibohd-keyscanning v0.1.3, kiibohd-hall-effect-keyscanning v0.1.3, kiibohd-hid-io v0.1.4, kiibohd-usb v0.1.5 ([`0cfed73`](https://github.com/kiibohd/kiibohd-core/commit/0cfed738eb237387c8c2c8b6ca0476cd5b4d4241))
+    - Cleanup CHANGELOGs for cargo smart-release ([`ed512c5`](https://github.com/kiibohd/kiibohd-core/commit/ed512c548d08b009fe34d4c638521a2accb2ce12))
+    - Upgrade byteorder and heapless ([`2265b99`](https://github.com/kiibohd/kiibohd-core/commit/2265b9977161272386034d1550b73a7ec32334d2))
+</details>
+
 ## 0.1.2 (2022-11-29)
+
+<csr-id-2e5b8067349ebca66e1da4faaea43c8611dbaf80/>
 
 ### Changes
 
@@ -23,7 +121,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 17 commits contributed to the release over the course of 11 calendar days.
+ - 18 commits contributed to the release over the course of 11 calendar days.
  - 11 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -35,17 +133,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release kll-compiler v0.1.2 ([`17ba165`](https://github.com/kiibohd/kiibohd-core/commit/17ba1656b96c9ab6eeaabd4060a5d862b89d1a81))
     - Update CHANGELOG ([`19b4dac`](https://github.com/kiibohd/kiibohd-core/commit/19b4dacc658dc34aaa9761a0b4e125c01438322e))
     - Release kll-macros v0.1.2, kll-core v0.1.6, kiibohd-hid-io v0.1.3 ([`cf9ad2e`](https://github.com/kiibohd/kiibohd-core/commit/cf9ad2ec744f0452856a1c778031665fe38c0e45))
     - Update CHANGELOGs ([`5da78a4`](https://github.com/kiibohd/kiibohd-core/commit/5da78a4f2c7c359ceea2367a223beea5996a66d1))
-    - hid-io-protocol -> v0.1.4 ([`2e5b806`](https://github.com/kiibohd/kiibohd-core/commit/2e5b8067349ebca66e1da4faaea43c8611dbaf80))
+    - Hid-io-protocol -> v0.1.4 ([`2e5b806`](https://github.com/kiibohd/kiibohd-core/commit/2e5b8067349ebca66e1da4faaea43c8611dbaf80))
     - Update GitHub Actions (deny, pants, udeps) ([`b6ec165`](https://github.com/kiibohd/kiibohd-core/commit/b6ec165d19153d8acaffb8ff4ae8504fcfe7e40c))
     - GitHub Actions - Fix toolchain action ([`2ca3bb4`](https://github.com/kiibohd/kiibohd-core/commit/2ca3bb40454e072a5cf3c28f6a911e0e505c4f54))
     - GitHub Actions update ([`51ab9e8`](https://github.com/kiibohd/kiibohd-core/commit/51ab9e8c26ec0fccbf1ddbe8cdb7afd1f9bdd05f))
     - Fix clippy warning ([`45583cb`](https://github.com/kiibohd/kiibohd-core/commit/45583cb9e5ed185df8b257984aa5a1b996d49160))
     - Release kiibohd-usb v0.1.4 ([`ebe27a6`](https://github.com/kiibohd/kiibohd-core/commit/ebe27a62c73c3cc489be911581528072baa1a058))
     - Adjusting changelogs prior to release of kiibohd-usb v0.1.4 ([`4191d69`](https://github.com/kiibohd/kiibohd-core/commit/4191d69f9d180a27a8b2759fa60c4adccfaded15))
-    - usb-device and usbd-hid patches have been merged upstream ([`1f218d8`](https://github.com/kiibohd/kiibohd-core/commit/1f218d80657b55cac6d9f07aeaf4491c6798002e))
+    - Usb-device and usbd-hid patches have been merged upstream ([`1f218d8`](https://github.com/kiibohd/kiibohd-core/commit/1f218d80657b55cac6d9f07aeaf4491c6798002e))
     - Release kiibohd-usb v0.1.3 ([`c688091`](https://github.com/kiibohd/kiibohd-core/commit/c688091c1c2ab9863700543598fb6ead9e1ad35f))
     - Adjusting changelogs prior to release of kiibohd-usb v0.1.3 ([`8d8bff3`](https://github.com/kiibohd/kiibohd-core/commit/8d8bff34fcf48f89d59dede7b8d7104a6a659cf2))
     - Release kiibohd-hid-io v0.1.2 ([`7bbcb23`](https://github.com/kiibohd/kiibohd-core/commit/7bbcb233604fffa6f86c64dc6b897091199c2dc4))
@@ -85,8 +184,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update pest and ignore clippy warnings ([`bd95015`](https://github.com/kiibohd/kiibohd-core/commit/bd950153f7d6b537d4e9c701e97f822668d6424d))
     - Fix changelogs ([`33ef4a3`](https://github.com/kiibohd/kiibohd-core/commit/33ef4a3f4fded7a8dd1f00510291f4075711186f))
     - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
-    - arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
-    - cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
+    - Arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
+    - Cargo fmt ([`8e38526`](https://github.com/kiibohd/kiibohd-core/commit/8e385266d5c631630c95fec6fb13808e1395de0a))
     - Add KeyScanning trait ([`218896b`](https://github.com/kiibohd/kiibohd-core/commit/218896b335f0b46d7cf9d5430afb8a98feb2c4b7))
     - Fix pwm and scaling for open/short detection on is31fl3743b ([`0ec2103`](https://github.com/kiibohd/kiibohd-core/commit/0ec21033b564b8cb18051c15d36e657e12d9d843))
     - Update is31fl3743b and fix clippy warnings ([`f125eed`](https://github.com/kiibohd/kiibohd-core/commit/f125eed08a1b2d390b7b8d2fa563aeb2d5759b7e))
@@ -98,14 +197,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Add better debbuing for i331fl3743b crate ([`6416b1c`](https://github.com/kiibohd/kiibohd-core/commit/6416b1cf07440184ba088a077f59a7414a7fb8eb))
     - Stabilized compiler feature ([`8cd3098`](https://github.com/kiibohd/kiibohd-core/commit/8cd309877aa02639bb7de38a1a46890ad3637d08))
     - [kiibohd-hid-io] Fix rx buffer processing ([`98fef86`](https://github.com/kiibohd/kiibohd-core/commit/98fef86895b8aa78d40d6a0ee8b74d1674511b5b))
-    - usbd-hid now uses defmt instead of defmt-impl feature ([`4039041`](https://github.com/kiibohd/kiibohd-core/commit/4039041f1e79ad10fd87e3c2536da4f4b240feea))
+    - Usbd-hid now uses defmt instead of defmt-impl feature ([`4039041`](https://github.com/kiibohd/kiibohd-core/commit/4039041f1e79ad10fd87e3c2536da4f4b240feea))
     - [kiibohd-usb] Adding HID Lock LED support ([`ce32c30`](https://github.com/kiibohd/kiibohd-core/commit/ce32c302c003900690c645d70ea2c97e87b370ce))
     - Fix clippy lints ([`6d404e5`](https://github.com/kiibohd/kiibohd-core/commit/6d404e561abd569c609af0e03716bb79e9cdeb24))
     - Simplifying log crate ([`5a8f450`](https://github.com/kiibohd/kiibohd-core/commit/5a8f4505c68c681b773e8cf6e96a62eeaef2c4d3))
     - [kiibohd-usb] Fix remote wakeup and nkro support ([`3aa9f7e`](https://github.com/kiibohd/kiibohd-core/commit/3aa9f7e9273f1d64933f9fe2a0c8c37960cea705))
     - [kll-core] Fix update status position ([`6b0c01d`](https://github.com/kiibohd/kiibohd-core/commit/6b0c01d4b3f452375a94847ced49297d5d27530f))
     - [kiibohd-keyscanning] Add off state ignore option ([`5cd975c`](https://github.com/kiibohd/kiibohd-core/commit/5cd975c07908246fd49f8550ecceec7220e6ae0e))
-    - kiibohd-usb now passes USB compliance HID Tests ([`63a6b3e`](https://github.com/kiibohd/kiibohd-core/commit/63a6b3eebcc1578aa294fc88831b4f0d675fb82f))
+    - Kiibohd-usb now passes USB compliance HID Tests ([`63a6b3e`](https://github.com/kiibohd/kiibohd-core/commit/63a6b3eebcc1578aa294fc88831b4f0d675fb82f))
     - Increment versions (kll-core, kiibohd-usb) ([`0e9fbf4`](https://github.com/kiibohd/kiibohd-core/commit/0e9fbf40b9f9243f727d80c44a3cae64a4639968))
     - Adding Analog conversion support and fixing kiibohd-usb mouse support ([`4cc97e8`](https://github.com/kiibohd/kiibohd-core/commit/4cc97e8b8302f76ef006032e60ef7b3a2e613da0))
     - Fix missing defmt enable ([`0a3a5f4`](https://github.com/kiibohd/kiibohd-core/commit/0a3a5f48fc753d87ba2bcfe1bc8af845ae73fa5f))
@@ -129,13 +228,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update README.md ([`aeacfb2`](https://github.com/kiibohd/kiibohd-core/commit/aeacfb274fe2b57d410aa63c594af047edccf3f7))
     - Update README.md ([`1228efd`](https://github.com/kiibohd/kiibohd-core/commit/1228efdf73543615fbcf1ffc715e517283a767c5))
     - Update README.md ([`784d325`](https://github.com/kiibohd/kiibohd-core/commit/784d3259a3e798a5fad642189736de9f95e7dd98))
-    - is31fl3743b README.md ([`ee0eefe`](https://github.com/kiibohd/kiibohd-core/commit/ee0eefe1d154d6491afdd474fa4f8e4ad53880c2))
+    - Is31fl3743b README.md ([`ee0eefe`](https://github.com/kiibohd/kiibohd-core/commit/ee0eefe1d154d6491afdd474fa4f8e4ad53880c2))
     - Fix clippy warnings ([`acba465`](https://github.com/kiibohd/kiibohd-core/commit/acba4651a0d349b981889fe9debd202ad96f1d97))
     - Add kll-core support to kiibohd-hall-effect-keyscanning ([`d0a5c83`](https://github.com/kiibohd/kiibohd-core/commit/d0a5c8376f3b17bf3e3418e5466d095295d5137f))
     - Fix typo ([`4ba9592`](https://github.com/kiibohd/kiibohd-core/commit/4ba95923178cd5755433d3314650882e57baa5d7))
     - Adding no-std keywords ([`59254c5`](https://github.com/kiibohd/kiibohd-core/commit/59254c5018132cb379790e6e0df6dc02f75b7c0f))
     - Adding process_off_state_lookups ([`babf695`](https://github.com/kiibohd/kiibohd-core/commit/babf695a81c0f31a5445ace0cdc383caa1eea873))
-    - cargo fmt ([`c37456d`](https://github.com/kiibohd/kiibohd-core/commit/c37456d7bfb1f032a0947e4aeb19ea24761e8e7a))
+    - Cargo fmt ([`c37456d`](https://github.com/kiibohd/kiibohd-core/commit/c37456d7bfb1f032a0947e4aeb19ea24761e8e7a))
     - Support custom crates.io packages for usb ([`59b8e0f`](https://github.com/kiibohd/kiibohd-core/commit/59b8e0f43f10021c1758b8f44b224bd4be008e31))
     - Set versions for kiibohd-usb ([`33999e3`](https://github.com/kiibohd/kiibohd-core/commit/33999e3e2468d881d89ce4a035369bf4dacfdbd0))
     - Handle compilation error for missing match ([`f28bbb7`](https://github.com/kiibohd/kiibohd-core/commit/f28bbb71d6c41529cdde001afb955f4007e76240))
@@ -147,7 +246,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Add enqueue_ functions for kiibohd-usb ([`bc989f9`](https://github.com/kiibohd/kiibohd-core/commit/bc989f9c81098047396de4c49f13034df9fd9c88))
     - Adding kll-core KeyEvent to TriggerEvent conversion ([`eb54635`](https://github.com/kiibohd/kiibohd-core/commit/eb54635c7ae2735dc9660fc08a668bb11f9bc2a6))
     - Adding state() lookup to kiibohd-keyscanning ([`0ebd4d1`](https://github.com/kiibohd/kiibohd-core/commit/0ebd4d14ef797db38d479bba41f5e2fb0c705d67))
-    - u8 to u16 typo ([`b936e79`](https://github.com/kiibohd/kiibohd-core/commit/b936e796f14be4a670467d987ab687ec10ff1db9))
+    - U8 to u16 typo ([`b936e79`](https://github.com/kiibohd/kiibohd-core/commit/b936e796f14be4a670467d987ab687ec10ff1db9))
     - Resolve no_std compilation issues due to log ([`6f7df7c`](https://github.com/kiibohd/kiibohd-core/commit/6f7df7c1e830dec3d2138055c6c447054aba753e))
     - Convert kll-core validation test to a generic struct ([`3d06f99`](https://github.com/kiibohd/kiibohd-core/commit/3d06f990ec94655fb95b94323011197ee4d37894))
     - Initial generic kll -> kll-core validation test ([`0aa8806`](https://github.com/kiibohd/kiibohd-core/commit/0aa8806e5cfb9b811a2958c1b590a3e0d4f4bdfe))
@@ -168,7 +267,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Doc typo ([`112c9a6`](https://github.com/kiibohd/kiibohd-core/commit/112c9a6fc1f2a96f1dae9bba7833b2fcb412973f))
     - Initial IS31FL3743B support for atsam4 pdc ([`9674dc7`](https://github.com/kiibohd/kiibohd-core/commit/9674dc7410b51b0cc13a5a52118f3bf2e4651e7a))
     - Updating to defmt 0.3 ([`831f49e`](https://github.com/kiibohd/kiibohd-core/commit/831f49e1e4d8a3026417544604208a1b4a8243a1))
-    - cargo fmt typo ([`5e6998d`](https://github.com/kiibohd/kiibohd-core/commit/5e6998def3dc0ac05f78534a5f0fc83105f9d7e4))
+    - Cargo fmt typo ([`5e6998d`](https://github.com/kiibohd/kiibohd-core/commit/5e6998def3dc0ac05f78534a5f0fc83105f9d7e4))
     - Ignoring clippy warning ([`069c776`](https://github.com/kiibohd/kiibohd-core/commit/069c776aeeb304fd749b61d0c78460fb89831676))
     - Adding temporary GitHub Action integratino for kll-compiler ([`638f25c`](https://github.com/kiibohd/kiibohd-core/commit/638f25ce6845337d1914f30e17c41c6737801873))
     - Disabling broken tests ([`d562073`](https://github.com/kiibohd/kiibohd-core/commit/d56207355564662045dbe0c284151483738b4967))
@@ -198,7 +297,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Update README.md ([`4f75f08`](https://github.com/kiibohd/kiibohd-core/commit/4f75f088c6c772f64d2ba963e3da36e1f086db80))
     - Upating to 2021 edition ([`ea8ed92`](https://github.com/kiibohd/kiibohd-core/commit/ea8ed9259590c31456b11eba01abdd4a8138bf32))
     - Fixing multiplication overflow panic ([`985c72d`](https://github.com/kiibohd/kiibohd-core/commit/985c72dc69e8861566bc705e3ec9ee5f3e856d37))
-    - cargo fmt ([`64995b8`](https://github.com/kiibohd/kiibohd-core/commit/64995b8459bf1027d8171d57e7fb9f2c75ce33f8))
+    - Cargo fmt ([`64995b8`](https://github.com/kiibohd/kiibohd-core/commit/64995b8459bf1027d8171d57e7fb9f2c75ce33f8))
     - Added missing column size constant to timing calculations ([`70e8597`](https://github.com/kiibohd/kiibohd-core/commit/70e85978a85b1bafdfb125f815ed13798b07f874))
     - Updating kiibohd-keyscanning ([`1c51025`](https://github.com/kiibohd/kiibohd-core/commit/1c51025e8568e4e00571527b87a3ea8d20c251c8))
     - Fixing cargo fmt and clippy warnings ([`edcf4db`](https://github.com/kiibohd/kiibohd-core/commit/edcf4db1f62129b6f48a477e08883eb24ec4c057))
