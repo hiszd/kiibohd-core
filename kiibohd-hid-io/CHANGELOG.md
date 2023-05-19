@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 170 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release kll-core v0.1.8, kiibohd-hall-effect v0.2.0, kiibohd-keyscanning v0.1.4, kiibohd-hall-effect-keyscanning v0.2.0, safety bump kiibohd-hall-effect-keyscanning v0.2.0 ([`e15da97`](https://github.com/kiibohd/kiibohd-core/commit/e15da97be5b16e0298a22176486430ebce069c1c))
+</details>
+
 ## 0.1.4 (2022-11-29)
 
 ### Bug Fixes
@@ -16,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -27,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release is31fl3743b v0.1.3, kll-core v0.1.7, kiibohd-hall-effect v0.1.3, kiibohd-keyscanning v0.1.3, kiibohd-hall-effect-keyscanning v0.1.3, kiibohd-hid-io v0.1.4, kiibohd-usb v0.1.5 ([`0cfed73`](https://github.com/kiibohd/kiibohd-core/commit/0cfed738eb237387c8c2c8b6ca0476cd5b4d4241))
     - Cleanup CHANGELOGs for cargo smart-release ([`ed512c5`](https://github.com/kiibohd/kiibohd-core/commit/ed512c548d08b009fe34d4c638521a2accb2ce12))
     - Upgrade byteorder and heapless ([`2265b99`](https://github.com/kiibohd/kiibohd-core/commit/2265b9977161272386034d1550b73a7ec32334d2))
 </details>
@@ -61,7 +83,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **Uncategorized**
     - Release kll-macros v0.1.2, kll-core v0.1.6, kiibohd-hid-io v0.1.3 ([`cf9ad2e`](https://github.com/kiibohd/kiibohd-core/commit/cf9ad2ec744f0452856a1c778031665fe38c0e45))
     - Update CHANGELOGs ([`5da78a4`](https://github.com/kiibohd/kiibohd-core/commit/5da78a4f2c7c359ceea2367a223beea5996a66d1))
-    - hid-io-protocol -> v0.1.4 ([`2e5b806`](https://github.com/kiibohd/kiibohd-core/commit/2e5b8067349ebca66e1da4faaea43c8611dbaf80))
+    - Hid-io-protocol -> v0.1.4 ([`2e5b806`](https://github.com/kiibohd/kiibohd-core/commit/2e5b8067349ebca66e1da4faaea43c8611dbaf80))
 </details>
 
 ## 0.1.2 (2022-11-17)
@@ -105,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Initial working kll-compiler -> kll-core flow ([`4a21b5a`](https://github.com/kiibohd/kiibohd-core/commit/4a21b5a2e5f1c2ffc9048975cc8948bc00fce663))
     - Initial HidIoEvent handler ([`8019a12`](https://github.com/kiibohd/kiibohd-core/commit/8019a12f4d953470635f58dc54697e9bdb56bb11))
     - Fixing power of 2 issues with heapless::Vec ([`8cce7c2`](https://github.com/kiibohd/kiibohd-core/commit/8cce7c29199561a1051c42a9c195fa577a335ee6))
-    - cargo fmt typo ([`5e6998d`](https://github.com/kiibohd/kiibohd-core/commit/5e6998def3dc0ac05f78534a5f0fc83105f9d7e4))
+    - Cargo fmt typo ([`5e6998d`](https://github.com/kiibohd/kiibohd-core/commit/5e6998def3dc0ac05f78534a5f0fc83105f9d7e4))
     - Ignoring clippy warning ([`069c776`](https://github.com/kiibohd/kiibohd-core/commit/069c776aeeb304fd749b61d0c78460fb89831676))
     - Upating to 2021 edition ([`ea8ed92`](https://github.com/kiibohd/kiibohd-core/commit/ea8ed9259590c31456b11eba01abdd4a8138bf32))
     - Enabling defmt support in hid-io-protocol ([`022cb11`](https://github.com/kiibohd/kiibohd-core/commit/022cb1157deebfb037fac0118ddba6063e52e482))
