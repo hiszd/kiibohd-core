@@ -1,6 +1,6 @@
 [package]
 name          = "kiibohd-hall-effect"
-version       = "0.1.3"
+version       = "0.2.0"
 authors       = ["Jacob Alexander <haata@kiibohd.com>"]
 license       = "MIT OR Apache-2.0"
 edition       = "2021"
@@ -27,7 +27,7 @@ kll-core = ["dep:kll-core"]
 [dependencies]
 defmt    = { version = "0.3", optional = true }
 heapless = { version = "0.7" }
-kll-core = { version = "^0.1.7", path = "../kll-core", optional = true }
+kll-core = { version = "^0.1.8", path = "../kll-core", optional = true }
 log      = { version = "^0.4", default-features = false }
 
 

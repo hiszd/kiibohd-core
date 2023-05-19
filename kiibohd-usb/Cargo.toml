@@ -13,7 +13,7 @@ repository = "https://github.com/kiibohd/kiibohd-core"
 defmt = { version = "0.3", optional = true }
 heapless = { version = "0.7" }
 kiibohd-hid-io = { version = "^0.1.4", path = "../kiibohd-hid-io", optional = true }
-kll-core = { version = "^0.1.7", path = "../kll-core", optional = true }
+kll-core = { version = "^0.1.8", path = "../kll-core", optional = true }
 log = { version = "^0.4", default-features = false }
 usb-device = { version = "0.2.9" }
 usbd-hid = { version = "0.6.1" }

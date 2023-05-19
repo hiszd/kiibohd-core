@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.8 (2023-05-19)
+
+### New Features
+
+ - <csr-id-d3191fc2c5ab90fc125c155554569b083a6a1545/> Revamp kiibohd-hall-effect
+   - Different modes
+     * Normal (best precision, additional processing)
+     * Low-latency mode (best precision, optimized for latency)
+     * Test mode (widest range, lower precision)
+   - Remove C compatibility (no longer planned)
+   - On/off event generator (primilarily for low-latency mode)
+   - No more sample averaging
+     * Only use averaging when deciding when to recalibrate
+   - Recalibrate within a specified range after a period of stability is
+     detected
+     * Allows for per-key temperature and humidity stability
+     * Can dynamically adjust for new switches (different magnetic
+       strength)
+   - While not supported, test mode does support detecting magnet polarity
+     * Per-key modes are not supported (as the ADC will need to switch per
+       strobe and this may involve recalibration, which is slow)
+   - Add TriggerEventIterator
+     * Easier interface to allow to generate N number of trigger events
+       from a single call (instead of using a fixed size vector)
+   - Add Activate/Deactive USB HID LED states
+
+### Bug Fixes
+
+ - <csr-id-7a166007b9028882297472aa7143641cca178096/> const_ptr_read now stable
+ - <csr-id-03c1db16dde4618a7c778c2180aa1f8ea948297d/> Dependency updates for kll-core and kll-compiler
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 164 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Const_ptr_read now stable ([`7a16600`](https://github.com/kiibohd/kiibohd-core/commit/7a166007b9028882297472aa7143641cca178096))
+    - Dependency updates for kll-core and kll-compiler ([`03c1db1`](https://github.com/kiibohd/kiibohd-core/commit/03c1db16dde4618a7c778c2180aa1f8ea948297d))
+    - Revamp kiibohd-hall-effect ([`d3191fc`](https://github.com/kiibohd/kiibohd-core/commit/d3191fc2c5ab90fc125c155554569b083a6a1545))
+</details>
+
 ## 0.1.7 (2022-11-29)
 
 ### Bug Fixes
@@ -16,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -27,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release is31fl3743b v0.1.3, kll-core v0.1.7, kiibohd-hall-effect v0.1.3, kiibohd-keyscanning v0.1.3, kiibohd-hall-effect-keyscanning v0.1.3, kiibohd-hid-io v0.1.4, kiibohd-usb v0.1.5 ([`0cfed73`](https://github.com/kiibohd/kiibohd-core/commit/0cfed738eb237387c8c2c8b6ca0476cd5b4d4241))
     - Cleanup CHANGELOGs for cargo smart-release ([`ed512c5`](https://github.com/kiibohd/kiibohd-core/commit/ed512c548d08b009fe34d4c638521a2accb2ce12))
     - Upgrade byteorder and heapless ([`2265b99`](https://github.com/kiibohd/kiibohd-core/commit/2265b9977161272386034d1550b73a7ec32334d2))
 </details>
@@ -87,7 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Release is31fl3743b v0.1.2, kll-hid v0.1.2, kll-macros v0.1.1, kll-core v0.1.5, kiibohd-hall-effect v0.1.2, kiibohd-keyscanning v0.1.2, kiibohd-hall-effect-keyscanning v0.1.2, kiibohd-hid-io v0.1.2, kiibohd-usb v0.1.3 ([`5a574aa`](https://github.com/kiibohd/kiibohd-core/commit/5a574aa1da0321613614c4d7f6f285fe149af409))
     - Fix changelogs ([`33ef4a3`](https://github.com/kiibohd/kiibohd-core/commit/33ef4a3f4fded7a8dd1f00510291f4075711186f))
     - Initial CHANGELOG.md ([`04edeeb`](https://github.com/kiibohd/kiibohd-core/commit/04edeebcb78d924d4b139b56c0b513633f7f95cc))
-    - arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
+    - Arbitrary_enum_discriminant now stable in nightly ([`44abac3`](https://github.com/kiibohd/kiibohd-core/commit/44abac3e850be183bfa63a9b28363713ca99d1d5))
     - Update is31fl3743b and fix clippy warnings ([`f125eed`](https://github.com/kiibohd/kiibohd-core/commit/f125eed08a1b2d390b7b8d2fa563aeb2d5759b7e))
     - Add better debbuing for i331fl3743b crate ([`6416b1c`](https://github.com/kiibohd/kiibohd-core/commit/6416b1cf07440184ba088a077f59a7414a7fb8eb))
     - Stabilized compiler feature ([`8cd3098`](https://github.com/kiibohd/kiibohd-core/commit/8cd309877aa02639bb7de38a1a46890ad3637d08))

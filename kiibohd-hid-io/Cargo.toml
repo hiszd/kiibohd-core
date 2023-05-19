@@ -16,7 +16,7 @@ edition = "2021"
 defmt           = { version = "0.3", optional = true }
 heapless        = { version = "0.7.16" }
 hid-io-protocol = { version = "0.1.4", default-features = false, features = ["device"] }
-kll-core        = { version = "^0.1.7", path = "../kll-core" }
+kll-core        = { version = "^0.1.8", path = "../kll-core" }
 log             = { version = "0.4", default-features = false }
 pkg-version     = { version = "^1.0" }
 
