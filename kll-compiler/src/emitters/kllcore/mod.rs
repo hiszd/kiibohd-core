@@ -72,8 +72,7 @@ impl<'a> KllCoreData<'a> {
                     };
 
                 let result_guide = result_list.kll_core_guide(layouts);
-                let result_capability_guide =
-                    result_list.kll_core_capability_guide(layouts);
+                let result_capability_guide = result_list.kll_core_capability_guide(layouts);
                 // Determine if result guide has already been added
                 let result_pos =
                     match result_hash.try_insert(result_guide.clone(), result_guides.len()) {
@@ -102,8 +101,7 @@ impl<'a> KllCoreData<'a> {
             // Iterate again to build the necessary layer lookup
             for (trigger_list, result_list) in layer.trigger_result_lists() {
                 let trigger_condition_guide = trigger_list.kll_core_condition_guide();
-                let result_capability_guide =
-                    result_list.kll_core_capability_guide(layouts);
+                let result_capability_guide = result_list.kll_core_capability_guide(layouts);
 
                 // Lookup position in trigger:result lookup
                 let (_, _, trigger_result_pos) =
