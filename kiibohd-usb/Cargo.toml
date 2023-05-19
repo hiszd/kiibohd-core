@@ -1,6 +1,6 @@
 [package]
 name = "kiibohd-usb"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["Jacob Alexander <haata@kiibohd.com>"]
 edition = "2021"
 description = "Kiibohd USB HID Interface"
@@ -12,7 +12,7 @@ repository = "https://github.com/kiibohd/kiibohd-core"
 [dependencies]
 defmt = { version = "0.3", optional = true }
 heapless = { version = "0.7" }
-kiibohd-hid-io = { version = "^0.1.4", path = "../kiibohd-hid-io", optional = true }
+kiibohd-hid-io = { version = "^0.1.5", path = "../kiibohd-hid-io", optional = true }
 kll-core = { version = "^0.1.8", path = "../kll-core", optional = true }
 log = { version = "^0.4", default-features = false }
 usb-device = { version = "0.2.9" }
