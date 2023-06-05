@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.6 (2023-06-05)
+
+### New Features
+
+ - <csr-id-70371285b311a99fef13615a7a5c6632f0f37564/> Update to hid-io-protocol-0.1.5
+   - Set resolver = "2" to quite workspace warnings
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 17 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Update to hid-io-protocol-0.1.5 ([`7037128`](https://github.com/kiibohd/kiibohd-core/commit/70371285b311a99fef13615a7a5c6632f0f37564))
+</details>
+
 ## 0.1.5 (2023-05-19)
 
 ### Bug Fixes
@@ -15,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 170 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -27,6 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release kiibohd-hid-io v0.1.5, kiibohd-usb v0.1.6 ([`4538c36`](https://github.com/kiibohd/kiibohd-core/commit/4538c3688d070fcbb0b3b1a5ade481016b7e5e27))
     - Update kiibohd-hid-io changelog ([`8250b4e`](https://github.com/kiibohd/kiibohd-core/commit/8250b4ee70829c403266ac9392a5678bbb73bcef))
     - Release kll-core v0.1.8, kiibohd-hall-effect v0.2.0, kiibohd-keyscanning v0.1.4, kiibohd-hall-effect-keyscanning v0.2.0, safety bump kiibohd-hall-effect-keyscanning v0.2.0 ([`e15da97`](https://github.com/kiibohd/kiibohd-core/commit/e15da97be5b16e0298a22176486430ebce069c1c))
 </details>
