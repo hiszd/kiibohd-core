@@ -7,6 +7,22 @@
 
 #![cfg(test)]
 
+// TODO
+// General tests
+// Normal
+// - Test ok case
+// - Test idle recalibrate
+// - Test below min-ok
+// - Test above max-ok
+// Test
+// - Test ok case
+// - Test idle recalibrate
+// - Test below min-ok
+// - Test above max-ok
+// - Test sensor missing
+// - Test sensor broken
+// - Test sensor wrong pole
+
 // ----- Crates -----
 
 use super::*;
@@ -14,23 +30,16 @@ use flexi_logger::Logger;
 
 // ----- Types -----
 
-// --- NOTE ---
-// These thresholds were calculated on a Keystone v1.00 TKL pcb
+// TODO calibrate these values
 
-// Max sample deviation
-const MAX_DEVIATION: usize = 16;
+// Activation threshold
+const ACTIVATION: i16 = 1000;
 
-// Calibration Mode Thresholds
-const MIN_OK_THRESHOLD: usize = 1350;
-// U1350 - b10101000110 - Switch not pressed (not 100% guaranteed, but the minimum range we can work withA
-// Some sensors will have default values up to 1470 without any magnet and that is within the specs
-// of the datasheet.
+// Deactivation threshold
+const DEACTIVATION: i16 = 800;
 
-const MAX_OK_THRESHOLD: usize = 2500;
-// U2500 - b100111000100 - Switch fully pressed
-
-const NO_SENSOR_THRESHOLD: usize = 1000;
-// Likely invalid ADC level from non-existent sensor (or very low magnet)
+// Idle limit, used to determine when to reset calibration
+const IDLE_LIMIT: usize = 50;
 
 // ----- Enumerations -----
 
@@ -54,44 +63,78 @@ fn setup_logging_lite() -> Result<(), LogError> {
     }
 }
 
-// ----- Tests -----
+fn print_minimal_entry(entry: &'static lookup::Entry) {
+    trace!("min_ok_value: {}", entry.min_ok_value);
+    trace!("max_ok_value: {}", entry.max_ok_value);
+    trace!("sensor_zero: {}", entry.sensor_zero);
+    trace!("min_idle_value: {}", entry.min_idle_value);
+    trace!("max_idle_value: {}", entry.max_idle_value);
+}
+
+// ----- General Tests -----
 
 #[test]
 fn invalid_index() {
     setup_logging_lite().ok();
-    trace!(
-        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
-        MAX_DEVIATION,
-        MIN_OK_THRESHOLD,
-        MAX_OK_THRESHOLD,
-        NO_SENSOR_THRESHOLD
-    );
+    print_minimal_entry(&lookup::SILO_ATSAM4S_LC605_GAIN_4X);
 
     // Allocate a single sensor
-    let mut sensors = Sensors::<1>::new().unwrap();
+    let mut sensors = Sensors::<1>::new(
+        SensorMode::Normal(&lookup::SILO_ATSAM4S_LC605_GAIN_4X),
+        ACTIVATION,
+        DEACTIVATION,
+    )
+    .unwrap();
 
     // Add data to an invalid location
-    assert!(sensors
-        .add_test::<1, MAX_DEVIATION, MIN_OK_THRESHOLD, MAX_OK_THRESHOLD, NO_SENSOR_THRESHOLD>(1, 0)
-        .is_err());
+    assert!(sensors.add::<IDLE_LIMIT>(1, 0).is_err());
 
     // Retrieve data from an invalid location
     assert!(sensors.get_data(1).is_err());
 }
 
+// Updating mode
+// - Setup initial mode
+// - Switch mode
+//   * Update activation/deactivation
+//   * Update mode
+// - Check mode
 #[test]
-fn not_ready() {
+fn mode_switch() {
     setup_logging_lite().ok();
-    trace!(
-        "MAX_DEVIATION: {}  MIN_OK_THRESHOLD: {}  MAX_OK_THRESHOLD: {}  NO_SENSOR_THRESHOLD: {}",
-        MAX_DEVIATION,
-        MIN_OK_THRESHOLD,
-        MAX_OK_THRESHOLD,
-        NO_SENSOR_THRESHOLD
-    );
+    print_minimal_entry(&lookup::SILO_ATSAM4S_LC605_GAIN_2X);
+    print_minimal_entry(&lookup::SILO_ATSAM4S_LC605_GAIN_4X);
+
+    // Allocate a single sensor in normal mode
+    let mode = SensorMode::Normal(&lookup::SILO_ATSAM4S_LC605_GAIN_4X);
+    let mut sensors = Sensors::<1>::new(mode, ACTIVATION, DEACTIVATION).unwrap();
+    assert!(sensors.mode().unwrap() == mode);
+
+    // Switch to low-latency mode
+    let mode = SensorMode::LowLatency(&lookup::SILO_ATSAM4S_LC605_GAIN_4X);
+    sensors.update_mode(mode);
+    assert!(sensors.mode().unwrap() == mode);
+
+    // Switch to test mode
+    let mode = SensorMode::Test(&lookup::SILO_ATSAM4S_LC605_GAIN_2X);
+    sensors.update_mode(mode);
+    assert!(sensors.mode().unwrap() == mode);
+}
+
+// ----- Normal Mode Tests -----
+
+#[test]
+fn normal_not_ready() {
+    setup_logging_lite().ok();
+    print_minimal_entry(&lookup::SILO_ATSAM4S_LC605_GAIN_4X);
 
     // Allocate a single sensor
-    let sensors = Sensors::<1>::new().unwrap();
+    let sensors = Sensors::<1>::new(
+        SensorMode::Normal(&lookup::SILO_ATSAM4S_LC605_GAIN_4X),
+        ACTIVATION,
+        DEACTIVATION,
+    )
+    .unwrap();
 
     // Retrieve before sending any data
     let state = sensors.get_data(0);
@@ -103,6 +146,32 @@ fn not_ready() {
     panic!("Unexpected state: {:?}", state);
 }
 
+// ----- Test Mode Tests -----
+
+#[test]
+fn test_not_ready() {
+    setup_logging_lite().ok();
+    print_minimal_entry(&lookup::SILO_ATSAM4S_LC605_GAIN_4X);
+
+    // Allocate a single sensor
+    let sensors = Sensors::<1>::new(
+        SensorMode::Test(&lookup::SILO_ATSAM4S_LC605_GAIN_4X),
+        ACTIVATION,
+        DEACTIVATION,
+    )
+    .unwrap();
+
+    // Retrieve before sending any data
+    let state = sensors.get_data(0);
+    if let Err(SensorError::CalibrationError(data)) = state.clone() {
+        if data.cal == CalibrationStatus::NotReady {
+            return;
+        }
+    }
+    panic!("Unexpected state: {:?}", state);
+}
+
+/*
 #[test]
 fn deviation_check() {
     setup_logging_lite().ok();
@@ -483,3 +552,4 @@ fn increase_decrease_flip() {
     assert!(test, "Unexpected state: {:?} != {}", state, calc_val);
     info!("Lower value (pass): {} end", val);
 }
+*/

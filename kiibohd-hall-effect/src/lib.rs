@@ -9,8 +9,8 @@
 
 #![no_std]
 
-//mod test; // TODO
 pub mod lookup;
+mod test;
 
 // ----- Crates -----
 
@@ -130,6 +130,7 @@ pub enum SensorError {
     CalibrationError(SenseData),
     FailedToResize(usize),
     InvalidSensor(usize),
+    NoSensors,
 }
 
 /// Records momentary push button events
@@ -485,6 +486,7 @@ impl SenseData {
 // ----- Hall Effect Interface ------
 
 pub struct Sensors<const S: usize> {
+    /// Sensors in this collection
     sensors: Vec<SenseData, S>,
 }
 
@@ -543,6 +545,25 @@ impl<const S: usize> Sensors<S> {
 
     pub fn is_empty(&self) -> bool {
         S == 0
+    }
+
+    /// Retrieve mode from the first entry
+    /// NOTE: Modes generally require ADC configuration and it's usually
+    ///       infeasible (due to calibration) to switch modes for different
+    ///       sensors. It can work, but it's usually quite complicated and
+    ///       chip/board specific (which is why we don't consider it)
+    pub fn mode(&self) -> Result<SensorMode, SensorError> {
+        if self.is_empty() {
+            return Err(SensorError::NoSensors);
+        }
+        Ok(self.sensors[0].mode())
+    }
+
+    /// Update all sensors to use the specified mode
+    pub fn update_mode(&mut self, mode: SensorMode) {
+        for sensor in self.sensors.iter_mut() {
+            sensor.update_mode(mode);
+        }
     }
 }
 
