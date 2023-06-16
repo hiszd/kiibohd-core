@@ -32,4 +32,4 @@ log      = { version = "^0.4", default-features = false }
 
 
 [dev-dependencies]
-#flexi_logger    = "0.24"  # Unused until tests are refactored
+flexi_logger    = "0.25"
