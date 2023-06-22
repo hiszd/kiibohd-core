@@ -412,6 +412,14 @@ impl SenseData {
 
             // When we have a new valid minimum value calibration is complete
             self.cal = CalibrationStatus::MagnetDetected;
+        } else if self.cal == CalibrationStatus::NotReady {
+            let entry = self.mode.entry();
+            if reading > entry.min_idle_value && reading < entry.max_idle_value {
+                // To allow the keyboard to be used immediately, use this intial value for the offset
+                // And then use the average calculated later to better tune the switches
+                self.raw_offset = reading as i16 - entry.sensor_zero as i16;
+                self.cal = CalibrationStatus::MagnetDetected;
+            }
         }
 
         // If sensor is calibrated compute SenseAnalysis
@@ -518,7 +526,6 @@ impl<const S: usize> Sensors<S> {
         index: usize,
         reading: u16,
     ) -> Result<Option<&SenseData>, SensorError> {
-        trace!("Index: {}  Reading: {}", index, reading);
         if index < self.sensors.len() {
             Ok(self.sensors[index].add::<IDLE_LIMIT>(reading))
         } else {
@@ -607,7 +614,13 @@ mod converters {
                         cycles_since_state_change,
                     } => {
                         if cycles_since_state_change == 0 {
-                            trace!("Reading: {} {:?}", index, self.analysis.state);
+                            trace!(
+                                "Reading: {} {:?} {} {}",
+                                index,
+                                self.analysis.state,
+                                self.analysis.distance,
+                                self.activation
+                            );
                             events
                                 .push(kll_core::TriggerEvent::Switch {
                                     state: kll_core::trigger::Phro::Press,
@@ -629,7 +642,13 @@ mod converters {
                         cycles_since_state_change,
                     } => {
                         if cycles_since_state_change == 0 {
-                            trace!("Reading: {} {:?}", index, self.analysis.state);
+                            trace!(
+                                "Reading: {} {:?} {} {}",
+                                index,
+                                self.analysis.state,
+                                self.analysis.distance,
+                                self.deactivation
+                            );
                             events
                                 .push(kll_core::TriggerEvent::Switch {
                                     state: kll_core::trigger::Phro::Release,
