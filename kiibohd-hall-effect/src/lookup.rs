@@ -127,7 +127,8 @@ pub const SILO_ATSAM4S_LC605_GAIN_4X: Entry = Entry {
     max_ok_value: 1023,
     sensor_zero: 64,
     min_idle_value: 0,
-    //min_idle_value: 40, // TODO is it ok to leave at 0? 40 is technically a better tuned value
+    //min_idle_value: 5,
+    //min_idle_value: 40, // TODO is it ok to leave at 5? 40 is technically a better tuned value
     max_idle_value: 170,
 };
 

@@ -22,6 +22,9 @@ use log::*;
 
 // ----- Sense Data -----
 
+// Make sure there are at least 5 samples before trying to determine the sensor state (from NotReady)
+const MIN_IDLE_LIMIT: usize = 5;
+
 /// Indicates mode of the sensor
 /// Used to specify a different lookup table and data processing behaviour
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -402,24 +405,25 @@ impl SenseData {
     /// the expected range.
     pub fn add<const IDLE_LIMIT: usize>(&mut self, reading: u16) -> Option<&SenseData> {
         // Update raw data
+        let entry = self.mode.entry();
         if let Some(average) = self.data.update::<IDLE_LIMIT>(reading, self.mode) {
             // New minimum value detected
             // Due to temperature and humidity, the sensor may drift
             //
             // Calculate the offset from the pre-computed lookup table
-            let entry = self.mode.entry();
             self.raw_offset = average as i16 - entry.sensor_zero as i16;
 
             // When we have a new valid minimum value calibration is complete
             self.cal = CalibrationStatus::MagnetDetected;
-        } else if self.cal == CalibrationStatus::NotReady {
-            let entry = self.mode.entry();
-            if reading > entry.min_idle_value && reading < entry.max_idle_value {
-                // To allow the keyboard to be used immediately, use this intial value for the offset
-                // And then use the average calculated later to better tune the switches
-                self.raw_offset = reading as i16 - entry.sensor_zero as i16;
-                self.cal = CalibrationStatus::MagnetDetected;
-            }
+        } else if self.cal == CalibrationStatus::NotReady
+            && reading > entry.min_idle_value
+            && reading < entry.max_idle_value
+            && self.data.idle_count > MIN_IDLE_LIMIT as u32
+        {
+            // To allow the keyboard to be used immediately, use this intial value for the offset
+            // And then use the average calculated later to better tune the switches
+            self.raw_offset = reading as i16 - entry.sensor_zero as i16;
+            self.cal = CalibrationStatus::MagnetDetected;
         }
 
         // If sensor is calibrated compute SenseAnalysis
