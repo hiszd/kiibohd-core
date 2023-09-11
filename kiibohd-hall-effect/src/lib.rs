@@ -582,6 +582,39 @@ impl<const S: usize> Sensors<S> {
             sensor.update_mode(mode);
         }
     }
+
+    /// Current activation point
+    pub fn activation(&self, index: usize) -> Result<i16, SensorError> {
+        if index < self.sensors.len() {
+            Ok(self.sensors[index].activation())
+        } else {
+            Err(SensorError::InvalidSensor(index))
+        }
+    }
+
+    /// Current deactivation point
+    pub fn deactivation(&self, index: usize) -> Result<i16, SensorError> {
+        if index < self.sensors.len() {
+            Ok(self.sensors[index].deactivation())
+        } else {
+            Err(SensorError::InvalidSensor(index))
+        }
+    }
+
+    /// Update activation/deactivation points
+    pub fn update_activation(
+        &mut self,
+        index: usize,
+        activation: i16,
+        deactivation: i16,
+    ) -> Result<(), SensorError> {
+        if index < self.sensors.len() {
+            self.sensors[index].update_activation(activation, deactivation);
+            Ok(())
+        } else {
+            Err(SensorError::InvalidSensor(index))
+        }
+    }
 }
 
 #[cfg(feature = "kll-core")]
