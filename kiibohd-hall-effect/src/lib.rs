@@ -22,8 +22,8 @@ use log::*;
 
 // ----- Sense Data -----
 
-// Make sure there are at least 5 samples before trying to determine the sensor state (from NotReady)
-const MIN_IDLE_LIMIT: usize = 5;
+// Make sure there are at least MIN_IDLE_LIMIT samples before trying to determine the sensor state (from NotReady)
+const MIN_IDLE_LIMIT: usize = 10;
 
 /// Indicates mode of the sensor
 /// Used to specify a different lookup table and data processing behaviour
@@ -294,6 +294,8 @@ impl RawData {
 
         // Return average if idle count exceeds threshold
         if self.idle_count > IDLE_LIMIT as u32 {
+            // Reset the idle count to reduce constant recalibration from noise
+            self.idle_count = 0;
             Some(self.average)
         } else {
             None
@@ -429,6 +431,10 @@ impl SenseData {
         // If sensor is calibrated compute SenseAnalysis
         // Make sure the incoming value doesn't break the calibration
         if self.cal.update_calibration(reading, self.mode) {
+            // TODO - What if the calibration changes enough to change an on state to an off state?
+            //        Should we send an event?
+            //        Is there a way to detect this? (and smooth it out so it's not noticeable?)
+            //        Should we always have an off position? (is this necessary?)
             // Update analysis
             self.analysis = SenseAnalysis::new(self);
             Some(self)
