@@ -477,6 +477,10 @@ impl<
     fn h0051_manufacturingres_ack(&mut self, _data: h0051::Ack) -> Result<(), CommandError> {
         Ok(())
     }
+
+    fn h0061_layerset_cmd(&mut self, data: h0061::Cmd) -> Result<h0061::Ack, h0061::Nak> {
+        self.interface.h0061_layerset_cmd(data)
+    }
 }
 
 // ----- Traits -----
@@ -578,5 +582,12 @@ pub trait KiibohdCommandInterface<const H: usize> {
     /// Callback
     fn h0050_manufacturing_cmd(&mut self, _data: h0050::Cmd) -> Result<h0050::Ack, h0050::Nak> {
         Err(h0050::Nak {})
+    }
+
+    /// Layer set callback
+    /// Input received from host
+    /// Callback
+    fn h0061_layerset_cmd(&mut self, _data: h0061::Cmd) -> Result<h0061::Ack, h0061::Nak> {
+        Err(h0061::Nak {})
     }
 }
